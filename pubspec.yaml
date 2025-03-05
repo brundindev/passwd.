@@ -62,6 +62,10 @@ dependencies:
   google_fonts: ^6.1.0
   flutter_slidable: ^4.0.0
   image_picker: ^1.0.7  # Para seleccionar imágenes
+  file_picker: ^9.0.2   # Para seleccionar archivos
+  share_plus: ^10.1.4    # Para compartir archivos exportados
+  shared_preferences: ^2.5.2  # Para almacenar configuraciones de la app
+  cross_file: ^0.3.4+2
 
 dev_dependencies:
   flutter_test:

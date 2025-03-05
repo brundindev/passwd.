@@ -45,6 +45,14 @@ class AuthService {
           return "Error interno de Firebase. Por favor intenta de nuevo.";
         case 'operation-not-allowed':
           return "Esta operación no está permitida. Contacta al administrador.";
+        case 'too-many-requests':
+          return "Demasiados intentos fallidos. Por favor, inténtalo más tarde.";
+        case 'requires-recent-login':
+          return "Esta operación es sensible y requiere autenticación reciente.";
+        case 'expired-action-code':
+          return "El código de acción ha expirado. Por favor solicita uno nuevo.";
+        case 'invalid-action-code':
+          return "El código de acción es inválido. Puede haber sido utilizado o formateado incorrectamente.";        
         default:
           return "Error de autenticación: ${error.message}";
       }
@@ -113,6 +121,9 @@ class AuthService {
         print("Ejecutando inicio de sesión con Google en plataforma web");
         
         try {
+          // Cerrar cualquier sesión previa para evitar problemas de cache
+          await _auth.signOut();
+          
           // Configuración del proveedor de Google para web
           GoogleAuthProvider authProvider = GoogleAuthProvider();
           // Añadir ámbitos (scopes) opcionales
@@ -121,18 +132,18 @@ class AuthService {
           
           print("Configurado proveedor Google, intentando signInWithPopup");
           
-          // Opción 1: Iniciar sesión con ventana emergente
-          return await _auth.signInWithPopup(authProvider).catchError((error) {
-            print("Error con signInWithPopup: $error");
+          try {
+            // Opción 1: Iniciar sesión con ventana emergente
+            return await _auth.signInWithPopup(authProvider);
+          } catch (popupError) {
+            print("Error con signInWithPopup: $popupError");
             
             print("Intentando con signInWithRedirect como alternativa");
-            // Opción 2 (alternativa): Usar redirección si popup falla
-            return _auth.signInWithRedirect(authProvider).then((_) {
-              // Esta promesa no se resolverá en el caso de redirección
-              // ya que la página se recargará
-              return _auth.getRedirectResult();
-            });
-          });
+            // Opción 2 (alternativa): Usar redirección
+            await _auth.signInWithRedirect(authProvider);
+            // Esta línea solo se ejecutará si la redirección falla o regresa
+            return await _auth.getRedirectResult();
+          }
         } catch (webError) {
           print("Error específico en autenticación web: $webError");
           rethrow;
@@ -148,9 +159,10 @@ class AuthService {
         } else {
           // Intentar cerrar cualquier sesión previa para forzar la selección de cuenta
           try {
+            print("Intentando cerrar sesión previa de Google");
             await _googleSignIn.signOut();
             // Pequeña pausa para asegurar que la instancia de GoogleSignIn se reinicie
-            await Future.delayed(Duration(milliseconds: 300));
+            await Future.delayed(Duration(milliseconds: 500));
           } catch (e) {
             print("Error al reiniciar sesión anterior de Google: $e");
             // Continuar a pesar del error de limpieza
@@ -158,34 +170,48 @@ class AuthService {
         }
         
         // Iniciar el proceso de autenticación con Google para plataformas nativas
-        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-        
-        if (googleUser == null) {
-          throw Exception('Inicio de sesión con Google cancelado por el usuario');
+        try {
+          print("Solicitando signIn con GoogleSignIn");
+          final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+          
+          if (googleUser == null) {
+            print("Usuario canceló el inicio de sesión con Google");
+            throw Exception('Inicio de sesión con Google cancelado por el usuario');
+          }
+
+          print("Usuario Google seleccionado: ${googleUser.email}");
+          
+          // Obtener los detalles de autenticación de la solicitud
+          final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+          // Crear una nueva credencial
+          final credential = GoogleAuthProvider.credential(
+            accessToken: googleAuth.accessToken,
+            idToken: googleAuth.idToken,
+          );
+
+          print("Credencial Google obtenida, iniciando sesión en Firebase");
+          
+          // Iniciar sesión en Firebase con la credencial de Google
+          UserCredential result = await _auth.signInWithCredential(credential);
+          
+          print("Inicio de sesión en Firebase exitoso: ${result.user?.uid}");
+          
+          // Verificar si es un nuevo usuario
+          if (result.additionalUserInfo?.isNewUser ?? false) {
+            print("Nuevo usuario detectado, guardando en base de datos");
+            // Guardar nuevo usuario en la base de datos
+            await _database.child('usuarios').child(result.user!.uid).set({
+              'nombre': googleUser.displayName ?? googleUser.email.split('@')[0] ?? 'Usuario',
+              'pass': '', // Campo vacío por seguridad
+            });
+          }
+          
+          return result;
+        } catch (nativeGoogleError) {
+          print("Error específico en inicio de sesión nativo con Google: $nativeGoogleError");
+          rethrow;
         }
-
-        // Obtener los detalles de autenticación de la solicitud
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-        // Crear una nueva credencial
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-
-        // Iniciar sesión en Firebase con la credencial de Google
-        UserCredential result = await _auth.signInWithCredential(credential);
-        
-        // Verificar si es un nuevo usuario
-        if (result.additionalUserInfo?.isNewUser ?? false) {
-          // Guardar nuevo usuario en la base de datos
-          await _database.child('usuarios').child(result.user!.uid).set({
-            'nombre': googleUser.displayName ?? googleUser.email.split('@')[0] ?? 'Usuario',
-            'pass': '', // Campo vacío por seguridad
-          });
-        }
-        
-        return result;
       }
     } catch (e) {
       print("Error al iniciar sesión con Google: $e");
@@ -224,16 +250,47 @@ class AuthService {
   // Función para reiniciar GoogleSignIn
   Future<void> _resetGoogleSignIn() async {
     try {
+      print("Iniciando reseteo completo de GoogleSignIn");
+      
       // Cerrar sesión primero
-      await _googleSignIn.signOut();
+      try {
+        await _googleSignIn.signOut();
+        print("GoogleSignIn.signOut() completado");
+      } catch (signOutError) {
+        print("Error en GoogleSignIn.signOut(): $signOutError");
+        // Continuar a pesar del error
+      }
+      
+      // Esperar un momento para evitar problemas de concurrencia
+      await Future.delayed(Duration(milliseconds: 200));
+      
       // Desconectar completamente
-      await _googleSignIn.disconnect();
+      try {
+        await _googleSignIn.disconnect();
+        print("GoogleSignIn.disconnect() completado");
+      } catch (disconnectError) {
+        print("Error en GoogleSignIn.disconnect(): $disconnectError");
+        // Continuar a pesar del error
+      }
+      
       // Esperar para asegurar que la desconexión sea completa
       await Future.delayed(Duration(milliseconds: 500));
       print("GoogleSignIn reseteado correctamente");
     } catch (e) {
-      print("Error al resetear GoogleSignIn: $e");
+      print("Error general al resetear GoogleSignIn: $e");
       // Continuar a pesar del error
+    }
+  }
+
+  // Enviar correo de restablecimiento de contraseña
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      print("Enviando correo de restablecimiento a: $email");
+      await _auth.sendPasswordResetEmail(email: email);
+      print("Correo de restablecimiento enviado correctamente");
+    } catch (e) {
+      print("Error al enviar correo de restablecimiento: $e");
+      rethrow;
     }
   }
 } 

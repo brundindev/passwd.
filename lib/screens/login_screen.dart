@@ -241,6 +241,205 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Método para mostrar el diálogo de recuperación de contraseña
+  void _showForgotPasswordDialog() {
+    // Controlador para el campo de correo electrónico
+    final TextEditingController emailController = TextEditingController();
+    // Variable para controlar el estado de carga
+    bool isLoading = false;
+    // Variable para mostrar mensajes de error
+    String? errorMessage;
+    // Variable para mostrar mensaje de éxito
+    bool isSuccess = false;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false, // El usuario debe interactuar con el diálogo
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                'Restablecer contraseña',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ingresa tu correo electrónico para recibir un enlace de restablecimiento de contraseña.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                    ),
+                    SizedBox(height: 16),
+                    if (errorMessage != null)
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline, color: Colors.red, size: 16),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                errorMessage!,
+                                style: TextStyle(color: Colors.red, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (errorMessage != null) SizedBox(height: 16),
+                    if (isSuccess)
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle_outline, color: Colors.green, size: 16),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '¡Correo enviado! Revisa tu bandeja de entrada y sigue las instrucciones.',
+                                style: TextStyle(color: Colors.green, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (isSuccess) SizedBox(height: 16),
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.normal),
+                      decoration: InputDecoration(
+                        labelText: 'Correo electrónico',
+                        hintText: 'ejemplo@dominio.com',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: Icon(Icons.email),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                      ),
+                      enabled: !isSuccess, // Deshabilitar si ya se envió el correo
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: Text('Cancelar'),
+                ),
+                if (!isSuccess)
+                  ElevatedButton(
+                    onPressed: isLoading 
+                      ? null 
+                      : () async {
+                        // Validar email
+                        final email = emailController.text.trim();
+                        if (email.isEmpty) {
+                          setState(() {
+                            errorMessage = "Por favor, ingresa tu correo electrónico";
+                          });
+                          return;
+                        }
+                        
+                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+                          setState(() {
+                            errorMessage = "Por favor, ingresa un correo electrónico válido";
+                          });
+                          return;
+                        }
+                        
+                        // Mostrar carga
+                        setState(() {
+                          isLoading = true;
+                          errorMessage = null;
+                        });
+                        
+                        try {
+                          // Enviar correo de restablecimiento
+                          final authService = Provider.of<AuthService>(context, listen: false);
+                          await authService.sendPasswordResetEmail(email);
+                          
+                          // Mostrar éxito
+                          setState(() {
+                            isLoading = false;
+                            isSuccess = true;
+                          });
+                          
+                          // Cerrar diálogo después de 3 segundos si todo va bien
+                          Future.delayed(Duration(seconds: 3), () {
+                            if (mounted && Navigator.of(dialogContext, rootNavigator: true).canPop()) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                          });
+                        } catch (e) {
+                          // Manejar error
+                          setState(() {
+                            isLoading = false;
+                            final authService = Provider.of<AuthService>(context, listen: false);
+                            errorMessage = authService.handleAuthError(e);
+                          });
+                        }
+                      },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: isLoading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text('Enviar'),
+                  ),
+                if (isSuccess)
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text('Entendido'),
+                  ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -422,7 +621,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
                                   onPressed: () {
-                                    // TODO: Implementar recuperación de contraseña
+                                    // Mostrar diálogo para ingresar correo
+                                    _showForgotPasswordDialog();
                                   },
                                   child: Text(
                                     'Olvidé mi contraseña',

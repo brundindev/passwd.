@@ -14,6 +14,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/password_service.dart';
+import 'services/app_settings_service.dart';
+import 'services/inactivity_detector.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 // Definir colores de la aplicación
@@ -82,6 +84,15 @@ void main() async {
             return PasswordProvider();
           }
         ),
+        ChangeNotifierProvider<AppSettingsService>(
+          create: (_) {
+            print("Creando instancia de AppSettingsService");
+            final settings = AppSettingsService();
+            // Inicializar las configuraciones
+            settings.initialize();
+            return settings;
+          }
+        ),
         StreamProvider(
           create: (context) {
             print("Configurando stream de authStateChanges");
@@ -90,7 +101,7 @@ void main() async {
           initialData: null,
         ),
       ],
-      child: MyApp(),
+      child: const MyApp(),
     ),
   );
 }
@@ -100,172 +111,174 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Password Manager',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        // Colores base
-        primaryColor: AppColors.primaryColor,
-        scaffoldBackgroundColor: AppColors.primaryColor,
-        canvasColor: AppColors.primaryColor,
-        colorScheme: ColorScheme.dark(
-          primary: AppColors.accentColor,
-          secondary: AppColors.secondaryColor,
-          error: AppColors.errorColor,
-          surface: AppColors.primaryColor,
-        ),
-        
-        // Estilo de texto
-        textTheme: TextTheme(
-          displayLarge: TextStyle(
-            fontSize: 42,
-            fontWeight: FontWeight.bold,
-            color: AppColors.secondaryColor,
-            letterSpacing: 2,
+    return ActivityDetector(
+      child: MaterialApp(
+        title: 'Password Manager',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          // Colores base
+          primaryColor: AppColors.primaryColor,
+          scaffoldBackgroundColor: AppColors.primaryColor,
+          canvasColor: AppColors.primaryColor,
+          colorScheme: ColorScheme.dark(
+            primary: AppColors.accentColor,
+            secondary: AppColors.secondaryColor,
+            error: AppColors.errorColor,
+            surface: AppColors.primaryColor,
           ),
-          displayMedium: TextStyle(
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
-            color: AppColors.secondaryColor,
-          ),
-          displaySmall: TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-            color: AppColors.secondaryColor,
-          ),
-          bodyLarge: TextStyle(
-            fontSize: 18,
-            color: AppColors.secondaryColor,
-          ),
-          bodyMedium: TextStyle(
-            fontSize: 16,
-            color: AppColors.secondaryColor.withOpacity(0.9),
-          ),
-          titleLarge: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: AppColors.secondaryColor,
-          ),
-        ),
-        
-        // Estilos de AppBar
-        appBarTheme: AppBarTheme(
-          backgroundColor: AppColors.primaryColor,
-          elevation: 0,
-          centerTitle: true,
-          titleTextStyle: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
-          iconTheme: IconThemeData(
-            color: AppColors.secondaryColor,
-          ),
-        ),
-        
-        // Estilos de botones
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.secondaryColor,
-            foregroundColor: AppColors.primaryColor,
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 5,
-            textStyle: TextStyle(
-              fontSize: 18,
+          
+          // Estilo de texto
+          textTheme: TextTheme(
+            displayLarge: TextStyle(
+              fontSize: 42,
               fontWeight: FontWeight.bold,
+              color: AppColors.secondaryColor,
+              letterSpacing: 2,
             ),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.secondaryColor,
-            side: BorderSide(color: AppColors.secondaryColor, width: 2),
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            textStyle: TextStyle(
-              fontSize: 18,
+            displayMedium: TextStyle(
+              fontSize: 36,
               fontWeight: FontWeight.bold,
+              color: AppColors.secondaryColor,
             ),
-          ),
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.accentColor,
-            textStyle: TextStyle(
+            displaySmall: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+              color: AppColors.secondaryColor,
+            ),
+            bodyLarge: TextStyle(
+              fontSize: 18,
+              color: AppColors.secondaryColor,
+            ),
+            bodyMedium: TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w600,
+              color: AppColors.secondaryColor.withOpacity(0.9),
+            ),
+            titleLarge: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppColors.secondaryColor,
             ),
           ),
-        ),
-        
-        // Estilos de Card y Dialog
-        cardTheme: CardTheme(
-          color: AppColors.primaryColor,
-          elevation: 8,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+          
+          // Estilos de AppBar
+          appBarTheme: AppBarTheme(
+            backgroundColor: AppColors.primaryColor,
+            elevation: 0,
+            centerTitle: true,
+            titleTextStyle: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+            iconTheme: IconThemeData(
+              color: AppColors.secondaryColor,
+            ),
+          ),
+          
+          // Estilos de botones
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.secondaryColor,
+              foregroundColor: AppColors.primaryColor,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 5,
+              textStyle: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          outlinedButtonTheme: OutlinedButtonThemeData(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.secondaryColor,
+              side: BorderSide(color: AppColors.secondaryColor, width: 2),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              textStyle: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.accentColor,
+              textStyle: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          
+          // Estilos de Card y Dialog
+          cardTheme: CardTheme(
+            color: AppColors.primaryColor,
+            elevation: 8,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          dialogTheme: DialogTheme(
+            backgroundColor: Color(0xFF121212),
+            elevation: 8,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          
+          // Estilo para campos de formulario
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.accentColor, width: 2),
+            ),
+            labelStyle: TextStyle(color: Colors.grey.shade800),
+            hintStyle: TextStyle(color: Colors.grey.shade600),
+            prefixIconColor: Colors.grey.shade800,
+            suffixIconColor: Colors.grey.shade800,
+          ),
+          
+          // Otros estilos
+          dividerTheme: DividerThemeData(
+            color: Colors.white24,
+            thickness: 1,
+          ),
+          snackBarTheme: SnackBarThemeData(
+            backgroundColor: Color(0xFF323232),
+            contentTextStyle: TextStyle(color: Colors.white),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            behavior: SnackBarBehavior.floating,
           ),
         ),
-        dialogTheme: DialogTheme(
-          backgroundColor: Color(0xFF121212),
-          elevation: 8,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-        
-        // Estilo para campos de formulario
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.accentColor, width: 2),
-          ),
-          labelStyle: TextStyle(color: Colors.grey.shade800),
-          hintStyle: TextStyle(color: Colors.grey.shade600),
-          prefixIconColor: Colors.grey.shade800,
-          suffixIconColor: Colors.grey.shade800,
-        ),
-        
-        // Otros estilos
-        dividerTheme: DividerThemeData(
-          color: Colors.white24,
-          thickness: 1,
-        ),
-        snackBarTheme: SnackBarThemeData(
-          backgroundColor: Color(0xFF323232),
-          contentTextStyle: TextStyle(color: Colors.white),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+        initialRoute: '/welcome',
+        routes: {
+          '/welcome': (context) => WelcomeScreen(),
+          '/login': (context) => LoginScreen(),
+          '/register': (context) => RegisterScreen(),
+          '/home': (context) => HomeScreen(),
+          '/settings': (context) => SettingsScreen(),
+          '/favorites': (context) => FavoritePasswordsScreen(),
+          '/trash': (context) => TrashPasswordsScreen(),
+          '/profile': (context) => ProfileScreen(),
+        },
       ),
-      initialRoute: '/welcome',
-      routes: {
-        '/welcome': (context) => WelcomeScreen(),
-        '/login': (context) => LoginScreen(),
-        '/register': (context) => RegisterScreen(),
-        '/home': (context) => HomeScreen(),
-        '/settings': (context) => SettingsScreen(),
-        '/favorites': (context) => FavoritePasswordsScreen(),
-        '/trash': (context) => TrashPasswordsScreen(),
-        '/profile': (context) => ProfileScreen(),
-      },
     );
   }
 }

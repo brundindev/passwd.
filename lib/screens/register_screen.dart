@@ -189,92 +189,143 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _errorMessage = null;
     });
     
-    // Mostrar diálogo de carga
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 16,
-          child: Container(
-            padding: const EdgeInsets.all(24.0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: 50, 
-                  width: 50, 
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-                    strokeWidth: 5,
-                  )
-                ),
-                SizedBox(height: 24),
-                Text(
-                  'Registrando con Google...',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Conectando con Google',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-    
-    // Configurar un timeout de seguridad para cerrar el diálogo después de 15 segundos
-    // independientemente de lo que suceda (el login con Google puede tardar más)
-    Future.delayed(Duration(seconds: 15)).then((_) {
-      if (mounted && Navigator.of(context).canPop()) {
-        print("Timeout de seguridad activado para cerrar el diálogo de carga en Google Sign-In");
-        try {
-          Navigator.of(context).pop();
-          setState(() {
-            _isLoading = false;
-            if (_errorMessage == null) {
-              _errorMessage = "No se pudo completar el registro con Google. Por favor, inténtalo de nuevo.";
-            }
-          });
-        } catch (e) {
-          print("Error al cerrar el diálogo por timeout: $e");
-        }
-      }
-    });
+    // Variable para rastrear si el diálogo está mostrado
+    bool isDialogShowing = false;
     
     try {
+      // Mostrar diálogo de carga
+      if (mounted) {
+        isDialogShowing = true;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 16,
+              child: Container(
+                padding: const EdgeInsets.all(24.0),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 50, 
+                      width: 50, 
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                        strokeWidth: 5,
+                      )
+                    ),
+                    SizedBox(height: 24),
+                    Text(
+                      'Registrando con Google...',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Conectando con Google',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      }
+      
+      // Configurar un timeout de seguridad para cerrar el diálogo después de 30 segundos
+      Future<void> timeoutFuture = Future.delayed(Duration(seconds: 30)).then((_) {
+        if (mounted && isDialogShowing && Navigator.of(context).canPop()) {
+          print("Timeout de seguridad activado para cerrar el diálogo de carga en Google Sign-In");
+          try {
+            Navigator.of(context).pop();
+            isDialogShowing = false;
+            setState(() {
+              _isLoading = false;
+              _errorMessage ??= "No se pudo completar el registro con Google. Por favor, inténtalo de nuevo.";
+            });
+          } catch (e) {
+            print("Error al cerrar el diálogo por timeout: $e");
+          }
+        }
+      });
+      
       print("Iniciando proceso de registro con Google...");
       final authService = Provider.of<AuthService>(context, listen: false);
-      final result = await authService.signInWithGoogle();
       
+      // Usar Future.any para manejar tanto el timeout como la autenticación
+      await Future.any([
+        timeoutFuture,
+        _attemptGoogleSignIn(authService),
+      ]);
+      
+    } catch (e) {
+      print("Error durante el registro con Google: $e");
+      
+      // Cerrar el diálogo de carga si está abierto
+      if (mounted && isDialogShowing && Navigator.of(context).canPop()) {
+        try {
+          Navigator.of(context).pop();
+          isDialogShowing = false;
+        } catch (navError) {
+          print("Error al cerrar diálogo: $navError");
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          try {
+            final authService = Provider.of<AuthService>(context, listen: false);
+            _errorMessage = authService.handleAuthError(e);
+            print("Mensaje de error manejado: $_errorMessage");
+          } catch (handlerError) {
+            print("Error al manejar el error: $handlerError");
+            _errorMessage = "Ocurrió un error durante el registro con Google: $e";
+          }
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
+  // Método separado para el intento de inicio de sesión con Google
+  Future<void> _attemptGoogleSignIn(AuthService authService) async {
+    try {
+      // Intentar la autenticación con Google
+      final result = await authService.signInWithGoogle();
       print("Registro con Google exitoso. UID: ${result.user?.uid}");
       
       // Verificar que el usuario esté autenticado
       final currentUser = FirebaseAuth.instance.currentUser;
       print("Verificando estado de autenticación después del registro con Google: ${currentUser?.uid ?? 'No autenticado'}");
       
+      if (currentUser == null) {
+        throw Exception("El usuario no fue autenticado correctamente después del registro con Google");
+      }
+      
       // Esperar un poco para hacer visible la carga
       await Future.delayed(Duration(milliseconds: 800));
       
       if (mounted) {
-        // Cerrar el diálogo de carga
+        // Cerrar el diálogo de carga si está abierto
         if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
+          try {
+            Navigator.of(context).pop();
+          } catch (navError) {
+            print("Error al cerrar diálogo: $navError");
+          }
         }
         
         // Cerrar sesión después del registro exitoso
@@ -314,25 +365,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
     } catch (e) {
-      print("Error durante el registro con Google: $e");
-      
-      // Cerrar el diálogo de carga
-      if (mounted) {
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
-        
-        setState(() {
-          try {
-            final authService = Provider.of<AuthService>(context, listen: false);
-            _errorMessage = authService.handleAuthError(e);
-          } catch (handlerError) {
-            print("Error al manejar el error: $handlerError");
-            _errorMessage = "Ocurrió un error durante el registro con Google: $e";
-          }
-          _isLoading = false;
-        });
-      }
+      print("Error en _attemptGoogleSignIn: $e");
+      rethrow; // Re-lanzar para que sea manejado por el catch principal
     }
   }
 
