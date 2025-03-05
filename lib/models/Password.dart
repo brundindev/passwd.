@@ -1,0 +1,81 @@
+class Password {
+  final String id;
+  final String sitio;
+  final String usuario;
+  final String password;
+  final DateTime fechaCreacion;
+  final DateTime ultimaModificacion;
+  final bool isFavorite;
+  final bool isInTrash;
+  final DateTime? deletedAt;
+
+  Password({
+    this.id = '',
+    required this.sitio,
+    required this.usuario,
+    required this.password,
+    DateTime? fechaCreacion,
+    DateTime? ultimaModificacion,
+    this.isFavorite = false,
+    this.isInTrash = false,
+    this.deletedAt,
+  }) : 
+    fechaCreacion = fechaCreacion ?? DateTime.now(),
+    ultimaModificacion = ultimaModificacion ?? DateTime.now();
+
+  factory Password.fromMap(String id, Map<String, dynamic> data) {
+    return Password(
+      id: id,
+      sitio: data['sitio'] ?? '',
+      usuario: data['usuario'] ?? '',
+      password: data['password'] ?? '',
+      fechaCreacion: data['fechaCreacion']?.toDate() ?? DateTime.now(),
+      ultimaModificacion: data['ultimaModificacion']?.toDate() ?? DateTime.now(),
+      isFavorite: data['isFavorite'] ?? false,
+      isInTrash: data['isInTrash'] ?? false,
+      deletedAt: data['deletedAt']?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    Map<String, dynamic> map = {
+      'sitio': sitio,
+      'usuario': usuario,
+      'password': password,
+      'fechaCreacion': fechaCreacion,
+      'ultimaModificacion': ultimaModificacion,
+      'isFavorite': isFavorite,
+      'isInTrash': isInTrash,
+    };
+    
+    if (deletedAt != null) {
+      map['deletedAt'] = deletedAt;
+    }
+    
+    return map;
+  }
+  
+  // Crear una copia de la contraseña con propiedades actualizadas
+  Password copyWith({
+    String? sitio,
+    String? usuario,
+    String? password,
+    DateTime? fechaCreacion,
+    DateTime? ultimaModificacion,
+    bool? isFavorite,
+    bool? isInTrash,
+    DateTime? deletedAt,
+  }) {
+    return Password(
+      id: id,
+      sitio: sitio ?? this.sitio,
+      usuario: usuario ?? this.usuario,
+      password: password ?? this.password,
+      fechaCreacion: fechaCreacion ?? this.fechaCreacion,
+      ultimaModificacion: ultimaModificacion ?? this.ultimaModificacion,
+      isFavorite: isFavorite ?? this.isFavorite,
+      isInTrash: isInTrash ?? this.isInTrash,
+      deletedAt: deletedAt ?? this.deletedAt,
+    );
+  }
+} 

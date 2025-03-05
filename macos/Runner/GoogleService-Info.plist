@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>252776703139-r4kp66hadu1o8228a8ot7o0hr0nlq62i.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.252776703139-r4kp66hadu1o8228a8ot7o0hr0nlq62i</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCtAlz5H9pJZm5_4Jw57idt5ymNHpLXS3c</string>
+	<key>GCM_SENDER_ID</key>
+	<string>252776703139</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.gestorPassword</string>
+	<key>PROJECT_ID</key>
+	<string>passwd-brundindev</string>
+	<key>STORAGE_BUCKET</key>
+	<string>passwd-brundindev.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:252776703139:ios:b3b9b44409c8cab2564b16</string>
+	<key>DATABASE_URL</key>
+	<string>https://passwd-brundindev-default-rtdb.europe-west1.firebasedatabase.app</string>
+</dict>
+</plist>

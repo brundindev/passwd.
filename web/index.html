@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="passwd">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>passwd</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <!-- Firebase Config -->
+  <script>
+    // Configuración de Firebase para web
+    const firebaseConfig = {
+      apiKey: "AIzaSyDYSZWktCMW2u_pzpYBi_A_ZszwQRyk6ac",
+      authDomain: "passwd-brundindev.firebaseapp.com",
+      databaseURL: "https://passwd-brundindev-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "passwd-brundindev",
+      storageBucket: "passwd-brundindev.firebasestorage.app",
+      messagingSenderId: "252776703139",
+      appId: "1:252776703139:web:60db327548b9f10d564b16"
+    };
+    
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+  </script>
+  
+  <!-- El orden de los scripts es importante -->
+  <script>
+    // Esto ayuda a detectar problemas con Firebase
+    window.addEventListener('load', function() {
+      console.log("Página cargada, verificando configuración Firebase...");
+      
+      if (typeof firebase !== 'undefined') {
+        console.log("Firebase cargado correctamente");
+        
+        // Verificar si auth está disponible
+        if (firebase.auth) {
+          console.log("Firebase Auth disponible");
+          
+          // Escuchar cambios de autenticación
+          firebase.auth().onAuthStateChanged(function(user) {
+            if (user) {
+              console.log("Usuario autenticado:", user.uid);
+            } else {
+              console.log("Usuario no autenticado");
+            }
+          });
+        } else {
+          console.error("Firebase Auth no está disponible");
+        }
+      } else {
+        console.error("Firebase no está definido. Verifica la carga de los scripts.");
+      }
+    });
+  </script>
+  
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

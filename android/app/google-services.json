@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "252776703139",
+    "firebase_url": "https://passwd-brundindev-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "passwd-brundindev",
+    "storage_bucket": "passwd-brundindev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:252776703139:android:7613a171dd9674d6564b16",
+        "android_client_info": {
+          "package_name": "com.example.gestor_password"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "252776703139-q06brg1jub0ppo212gac85k3shfq4fva.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCehziaHQgcKHv6jSwPLe74ThZvdswzVtY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "252776703139-q06brg1jub0ppo212gac85k3shfq4fva.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "252776703139-r4kp66hadu1o8228a8ot7o0hr0nlq62i.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.gestorPassword"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
