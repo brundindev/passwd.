@@ -9,6 +9,7 @@ import 'screens/register_screen.dart';
 import 'screens/favorite_passwords_screen.dart';
 import 'screens/trash_passwords_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/folders_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
@@ -276,6 +277,7 @@ class MyApp extends StatelessWidget {
           '/settings': (context) => SettingsScreen(),
           '/favorites': (context) => FavoritePasswordsScreen(),
           '/trash': (context) => TrashPasswordsScreen(),
+          '/folders': (context) => FoldersScreen(),
           '/profile': (context) => ProfileScreen(),
         },
       ),

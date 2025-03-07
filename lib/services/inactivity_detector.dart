@@ -191,9 +191,9 @@ class ActivityDetector extends StatefulWidget {
   final Widget child;
   
   const ActivityDetector({
-    Key? key,
+    super.key,
     required this.child,
-  }) : super(key: key);
+  });
   
   @override
   _ActivityDetectorState createState() => _ActivityDetectorState();

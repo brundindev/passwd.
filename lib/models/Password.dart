@@ -8,6 +8,7 @@ class Password {
   final bool isFavorite;
   final bool isInTrash;
   final DateTime? deletedAt;
+  final List<String> folderIds; // Lista de IDs de carpetas
 
   Password({
     this.id = '',
@@ -19,11 +20,20 @@ class Password {
     this.isFavorite = false,
     this.isInTrash = false,
     this.deletedAt,
+    this.folderIds = const [], // Por defecto, lista vacía
   }) : 
     fechaCreacion = fechaCreacion ?? DateTime.now(),
     ultimaModificacion = ultimaModificacion ?? DateTime.now();
 
   factory Password.fromMap(String id, Map<String, dynamic> data) {
+    // Convertir el campo folderIds a List<String>
+    List<String> folderIds = [];
+    if (data['folderIds'] != null) {
+      if (data['folderIds'] is List) {
+        folderIds = List<String>.from(data['folderIds']);
+      }
+    }
+
     return Password(
       id: id,
       sitio: data['sitio'] ?? '',
@@ -34,6 +44,7 @@ class Password {
       isFavorite: data['isFavorite'] ?? false,
       isInTrash: data['isInTrash'] ?? false,
       deletedAt: data['deletedAt']?.toDate(),
+      folderIds: folderIds,
     );
   }
 
@@ -46,6 +57,7 @@ class Password {
       'ultimaModificacion': ultimaModificacion,
       'isFavorite': isFavorite,
       'isInTrash': isInTrash,
+      'folderIds': folderIds, // Añadir folderIds al mapa
     };
     
     if (deletedAt != null) {
@@ -65,6 +77,7 @@ class Password {
     bool? isFavorite,
     bool? isInTrash,
     DateTime? deletedAt,
+    List<String>? folderIds,
   }) {
     return Password(
       id: id,
@@ -76,6 +89,33 @@ class Password {
       isFavorite: isFavorite ?? this.isFavorite,
       isInTrash: isInTrash ?? this.isInTrash,
       deletedAt: deletedAt ?? this.deletedAt,
+      folderIds: folderIds ?? this.folderIds,
+    );
+  }
+  
+  // Método para añadir la contraseña a una carpeta
+  Password addToFolder(String folderId) {
+    if (folderIds.contains(folderId)) return this;
+    
+    List<String> updatedFolderIds = List.from(folderIds);
+    updatedFolderIds.add(folderId);
+    
+    return copyWith(
+      folderIds: updatedFolderIds,
+      ultimaModificacion: DateTime.now(),
+    );
+  }
+  
+  // Método para quitar la contraseña de una carpeta
+  Password removeFromFolder(String folderId) {
+    if (!folderIds.contains(folderId)) return this;
+    
+    List<String> updatedFolderIds = List.from(folderIds);
+    updatedFolderIds.remove(folderId);
+    
+    return copyWith(
+      folderIds: updatedFolderIds,
+      ultimaModificacion: DateTime.now(),
     );
   }
 } 

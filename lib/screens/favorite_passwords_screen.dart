@@ -4,37 +4,20 @@ import 'package:flutter/services.dart';
 import 'dart:math';
 import '../models/password.dart';
 import '../services/password_service.dart';
+import '../services/password_generator.dart';
 import '../widgets/password_list_item.dart';
 
 class FavoritePasswordsScreen extends StatelessWidget {
   const FavoritePasswordsScreen({super.key});
 
   String generateRandomPassword({int length = 12}) {
-    final Random random = Random.secure();
-    const String lowercaseChars = 'abcdefghijklmnopqrstuvwxyz';
-    const String uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const String numberChars = '0123456789';
-    const String specialChars = '!@#%&*_?';
-    
-    final String allChars = lowercaseChars + uppercaseChars + numberChars + specialChars;
-    
-    // Asegurar que hay al menos uno de cada tipo de caracter
-    String password = '';
-    password += lowercaseChars[random.nextInt(lowercaseChars.length)];
-    password += uppercaseChars[random.nextInt(uppercaseChars.length)];
-    password += numberChars[random.nextInt(numberChars.length)];
-    password += specialChars[random.nextInt(specialChars.length)];
-    
-    // Rellenar con caracteres aleatorios
-    for (int i = 4; i < length; i++) {
-      password += allChars[random.nextInt(allChars.length)];
-    }
-    
-    // Mezclar todos los caracteres
-    final List<String> passwordChars = password.split('');
-    passwordChars.shuffle(random);
-    
-    return passwordChars.join('');
+    return PasswordGenerator.generateRandomPassword(
+      length: length,
+      useUpperCase: true,
+      useLowerCase: true,
+      useNumbers: true,
+      useSpecialChars: true,
+    );
   }
 
   @override

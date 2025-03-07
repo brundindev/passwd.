@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../models/password.dart';
 import '../services/totp_service.dart';
+import '../screens/folder_operations.dart';
 
 class PasswordListItem extends StatefulWidget {
   final Password password;
@@ -12,6 +13,7 @@ class PasswordListItem extends StatefulWidget {
   final Function()? onView;
   final Function()? onEdit;
   final Function()? onRestore;
+  final Function()? onAddToFolder;
   final bool isInTrash;
 
   const PasswordListItem({
@@ -22,6 +24,7 @@ class PasswordListItem extends StatefulWidget {
     this.onView,
     this.onEdit,
     this.onRestore,
+    this.onAddToFolder,
     this.isInTrash = false,
   });
 
@@ -108,6 +111,12 @@ class _PasswordListItemState extends State<PasswordListItem> {
                         ),
                         onPressed: widget.onToggleFavorite,
                         tooltip: 'Favorito',
+                      ),
+                    if (!widget.isInTrash && widget.onAddToFolder != null)
+                      IconButton(
+                        icon: Icon(Icons.folder_open, color: Colors.orange),
+                        onPressed: widget.onAddToFolder,
+                        tooltip: 'Añadir a carpeta',
                       ),
                     IconButton(
                       icon: Icon(Icons.copy, color: Colors.blue),

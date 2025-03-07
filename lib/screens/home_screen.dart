@@ -5,10 +5,13 @@ import 'dart:math';
 import '../models/password.dart';
 import '../services/password_service.dart';
 import '../services/auth_service.dart';
+import '../services/password_generator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'welcome_screen.dart';
 import '../widgets/password_list_item.dart';
 import 'settings_screen.dart';
+import 'folders_screen.dart';
+import '../services/folder_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,34 +27,18 @@ class _HomeScreenState extends State<HomeScreen> {
   final String _currentSection = 'all'; // 'all', 'favorites', 'trash'
   String _searchQuery = '';
   int _currentIndex = 0;
+  String? _selectedFolderId;
+  final FolderService _folderService = FolderService();
 
-  // Función para generar contraseñas aleatorias seguras
+  // Utilizar el servicio PasswordGenerator en lugar de la implementación local
   String generateRandomPassword({int length = 12}) {
-    final Random random = Random.secure();
-    const String lowercaseChars = 'abcdefghijklmnopqrstuvwxyz';
-    const String uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const String numberChars = '0123456789';
-    const String specialChars = '!@#%&*_?';
-    
-    final String allChars = lowercaseChars + uppercaseChars + numberChars + specialChars;
-    
-    // Asegurar que hay al menos uno de cada tipo de caracter
-    String password = '';
-    password += lowercaseChars[random.nextInt(lowercaseChars.length)];
-    password += uppercaseChars[random.nextInt(uppercaseChars.length)];
-    password += numberChars[random.nextInt(numberChars.length)];
-    password += specialChars[random.nextInt(specialChars.length)];
-    
-    // Rellenar con caracteres aleatorios
-    for (int i = 4; i < length; i++) {
-      password += allChars[random.nextInt(allChars.length)];
-    }
-    
-    // Mezclar todos los caracteres
-    final List<String> passwordChars = password.split('');
-    passwordChars.shuffle(random);
-    
-    return passwordChars.join('');
+    return PasswordGenerator.generateRandomPassword(
+      length: length,
+      useUpperCase: true,
+      useLowerCase: true,
+      useNumbers: true,
+      useSpecialChars: true,
+    );
   }
 
   @override
@@ -154,6 +141,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 PopupMenuItem(
+                  value: 'folders',
+                  child: Row(
+                    children: [
+                      Icon(Icons.folder_outlined),
+                      SizedBox(width: 8),
+                      Text('Mis Carpetas'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
                   value: 'logout',
                   child: Row(
                     children: [
@@ -167,6 +164,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onSelected: (value) async {
                 if (value == 'profile') {
                   Navigator.pushNamed(context, '/profile');
+                } else if (value == 'folders') {
+                  Navigator.pushNamed(context, '/folders');
                 } else if (value == 'logout') {
                   await _showLogoutDialog();
                 }
@@ -233,6 +232,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
               },
             ),
+            ListTile(
+              leading: Icon(Icons.folder_outlined),
+              title: Text('Mis Carpetas'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/folders');
+              },
+            ),
             Divider(),
             ListTile(
               leading: Icon(Icons.settings),
@@ -282,6 +289,76 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+          
+          // Selector de carpetas
+          if (_currentIndex == 0) // Solo mostrar en la vista de todas las contraseñas
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              child: FutureBuilder(
+                future: _getFolders(),
+        builder: (context, snapshot) {
+                  String folderText = 'Seleccionar carpeta';
+                  
+                  if (_selectedFolderId != null) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+                      folderText = 'Cargando carpeta...';
+                    } else if (snapshot.hasData) {
+                      final folders = snapshot.data as List;
+                      for (var folder in folders) {
+                        if (folder.id == _selectedFolderId) {
+                          folderText = 'Carpeta: ${folder.name}';
+                          break;
+                        }
+                      }
+                    } else {
+                      folderText = 'Carpeta seleccionada';
+                    }
+                  }
+                  
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () {
+                          _showFolderSelectionMenu(context);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.folder_outlined,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  folderText,
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_drop_down,
+                                color: Colors.grey.shade700,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          
           // Contenido principal
           Expanded(
             child: _buildContent(),
@@ -363,15 +440,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return StreamBuilder<List<Password>>(
       stream: _getPasswordStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
             child: CircularProgressIndicator(),
           );
-        }
-        
-        if (snapshot.hasError) {
-          return Center(
+          }
+          
+          if (snapshot.hasError) {
+            return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -396,8 +473,8 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Aplicar filtro de búsqueda
         passwords = _filterPasswords(passwords);
-        
-        if (passwords.isEmpty) {
+          
+          if (passwords.isEmpty) {
           IconData iconData;
           String message;
           
@@ -415,19 +492,20 @@ class _HomeScreenState extends State<HomeScreen> {
             message = "No tienes contraseñas guardadas";
           }
           
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 Icon(iconData, size: 72, color: Colors.grey[400]),
-                SizedBox(height: 16),
-                Text(
+                  SizedBox(height: 16),
+                  Text(
                   message,
                   style: TextStyle(
                     fontSize: 18,
                     color: Colors.grey[600],
                     fontWeight: FontWeight.w500,
                   ),
+
                 ),
                 if (_currentIndex == 0 && _searchQuery.isEmpty)
                   Padding(
@@ -443,20 +521,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-              ],
-            ),
-          );
-        }
-        
-        return ListView.builder(
+                ],
+              ),
+            );
+          }
+          
+          return ListView.builder(
           padding: EdgeInsets.only(top: 8),
-          itemCount: passwords.length,
-          itemBuilder: (context, index) {
-            final password = passwords[index];
+            itemCount: passwords.length,
+            itemBuilder: (context, index) {
+              final password = passwords[index];
             return _buildPasswordListItem(password);
-          },
-        );
-      },
+            },
+          );
+        },
     );
   }
   
@@ -469,6 +547,9 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (_currentIndex == 2) {
       // Papelera
       return passwordService.getTrashPasswords();
+    } else if (_selectedFolderId != null) {
+      // Contraseñas de la carpeta seleccionada
+      return _folderService.getPasswordsInFolder(_selectedFolderId!);
     } else {
       // Todas las contraseñas (no eliminadas)
       return passwordService.getPasswords();
@@ -491,6 +572,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onDelete: () => _deletePassword(password),
       onView: () => _showPasswordDetails(password),
       onEdit: () => _editPassword(password),
+      onAddToFolder: () => _showAddToFolderDialog(password),
       isInTrash: _currentIndex == 2,
       onRestore: _currentIndex == 2 ? () => _restorePassword(password) : null,
     );
@@ -539,35 +621,43 @@ class _HomeScreenState extends State<HomeScreen> {
         // Eliminación permanente
         Widget content = Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.delete_forever,
-                size: 40,
-                color: Colors.red,
+            Center(
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.delete_forever,
+                  size: 40,
+                  color: Colors.red,
+                ),
               ),
             ),
             SizedBox(height: 24),
-            Text(
-              '¿Estás seguro de que quieres eliminar esta contraseña permanentemente?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
+            Center(
+              child: Text(
+                '¿Estás seguro de que quieres eliminar esta contraseña permanentemente?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                ),
               ),
             ),
             SizedBox(height: 8),
-            Text(
-              'Esta acción no se puede deshacer.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.w500,
+            Center(
+              child: Text(
+                'Esta acción no se puede deshacer.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -609,7 +699,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ];
 
         _showModernModal(
-          context,
+            context,
           content,
           title: 'Eliminar permanentemente',
           actions: actions,
@@ -771,6 +861,21 @@ class _HomeScreenState extends State<HomeScreen> {
     String usuario = password.usuario;
     String passwordText = password.password;
     bool isFavorite = password.isFavorite;
+    List<String> selectedFolderIds = List.from(password.folderIds);
+    String selectedFolderName = '';
+    
+    if (selectedFolderIds.isNotEmpty) {
+      // Obtener nombre de la primera carpeta (para simplicidad)
+      _folderService.getFolders().first.then((folders) {
+        for (var folder in folders) {
+          if (folder.id == selectedFolderIds.first) {
+            selectedFolderName = folder.name;
+            break;
+          }
+        }
+      });
+    }
+    
     final formKey = GlobalKey<FormState>();
     bool showPassword = false;
     
@@ -881,6 +986,58 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
                 SizedBox(height: 20),
+                
+                // Selector de carpeta
+                InkWell(
+                  onTap: () {
+                    // Cerrar temporalmente este diálogo
+                    Navigator.of(context).pop();
+                    
+                    // Abrir el selector de carpetas personalizado
+                    _showFolderSelectorDialog(
+                      context, 
+                      selectedFolderIds, 
+                      (newSelectedIds, newSelectedName) {
+                        // Actualizar los IDs y nombre seleccionados
+                        setState(() {
+                          selectedFolderIds = newSelectedIds;
+                          selectedFolderName = newSelectedName;
+                        });
+                        
+                        // Volver a abrir el diálogo de editar contraseña
+                        _editPassword(password);
+                      }
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.white,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.folder_outlined, color: Theme.of(context).primaryColor),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            selectedFolderIds.isEmpty 
+                              ? 'Sin carpeta asignada' 
+                              : 'Carpeta: $selectedFolderName',
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                SizedBox(height: 20),
                 Row(
                   children: [
                     Checkbox(
@@ -936,9 +1093,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
-                    child: Row(
+              child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: [
+                children: [
                         CircularProgressIndicator(),
                         SizedBox(width: 24),
                         Text("Actualizando contraseña...", style: TextStyle(fontSize: 16)),
@@ -958,6 +1115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 usuario: usuario,
                 password: passwordText,
                 isFavorite: isFavorite,
+                folderIds: selectedFolderIds,
                 ultimaModificacion: DateTime.now(),
               );
               
@@ -1038,8 +1196,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
               Center(
                 child: Container(
                   width: 80,
@@ -1080,13 +1238,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   border: Border.all(color: Colors.grey.shade800),
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
                         Icon(Icons.lock, color: Colors.grey.shade300, size: 20),
                         SizedBox(width: 8),
-                        Text(
+                Text(
                           'Contraseña',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -1107,18 +1265,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.white, // Texto blanco para la contraseña
                             ),
                           ),
-                        ),
-                        IconButton(
-                          icon: Icon(
+                ),
+                IconButton(
+                  icon: Icon(
                             showPassword ? Icons.visibility_off : Icons.visibility,
                             color: Theme.of(context).primaryColor,
-                          ),
-                          onPressed: () {
-                            setState(() {
+                  ),
+                  onPressed: () {
+                    setState(() {
                               showPassword = !showPassword;
-                            });
-                          },
-                        ),
+                    });
+                  },
+                ),
                         IconButton(
                           icon: Icon(Icons.copy, color: Theme.of(context).primaryColor),
                           onPressed: () {
@@ -1134,10 +1292,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                         ),
-                      ],
-                    ),
-                  ],
+                        // Botón para añadir a carpeta
+                        IconButton(
+                          icon: Icon(Icons.folder_open, color: Theme.of(context).primaryColor),
+                          tooltip: 'Añadir a carpeta',
+                          onPressed: () {
+                            Navigator.pop(context); // Cerrar el diálogo de detalles
+                            _showAddToFolderDialog(password);
+                  },
                 ),
+              ],
+            ),
+          ],
+        ),
               ),
               SizedBox(height: 16),
               Row(
@@ -1173,7 +1340,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     List<Widget> actions = [
-      TextButton(
+                    TextButton(
         onPressed: () {
           Navigator.of(context).pop();
         },
@@ -1199,7 +1366,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     _showModernModal(
-      context,
+                context,
       content,
       title: 'Detalles de la contraseña',
       actions: actions,
@@ -1239,234 +1406,362 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
+                ),
+              );
+            }
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   void _showAddPasswordDialog(BuildContext context) {
-    // Variables para almacenar los datos del formulario
-    String sitio = '';
-    String usuario = '';
-    String password = '';
-    final formKey = GlobalKey<FormState>();
-    bool showPassword = false;
+    List<String> selectedFolderIds = _selectedFolderId != null ? [_selectedFolderId!] : [];
+    String selectedFolderName = '';
     
-    Widget content = StatefulBuilder(
-      builder: (context, setDialogState) {
-        return Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextFormField(
-                  style: TextStyle(color: Colors.black87),
-                  decoration: InputDecoration(
-                    labelText: 'Sitio web',
-                    prefixIcon: Icon(Icons.web),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+    if (_selectedFolderId != null) {
+      _folderService.getFolders().first.then((folders) {
+        for (var folder in folders) {
+          if (folder.id == _selectedFolderId) {
+            selectedFolderName = folder.name;
+            break;
+          }
+        }
+      });
+    }
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        final TextEditingController siteController = TextEditingController();
+        final TextEditingController usernameController = TextEditingController();
+        final TextEditingController passwordController = TextEditingController();
+        bool showPassword = false;
+        
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Añadir contraseña'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: siteController,
+                      style: TextStyle(color: Colors.grey[700]),
+                      decoration: InputDecoration(
+                        labelText: 'Sitio web o aplicación',
+                        prefixIcon: Icon(Icons.web),
+                      ),
                     ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingresa el nombre del sitio';
-                    }
-                    return null;
-                  },
-                  onSaved: (value) {
-                    sitio = value ?? '';
-                  },
-                ),
-                SizedBox(height: 20),
-                TextFormField(
-                  style: TextStyle(color: Colors.black87),
-                  decoration: InputDecoration(
-                    labelText: 'Usuario',
-                    prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: usernameController,
+                      style: TextStyle(color: Colors.grey[700]),
+                      decoration: InputDecoration(
+                        labelText: 'Nombre de usuario o email',
+                        prefixIcon: Icon(Icons.person),
+                      ),
                     ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) {
-                    // El usuario es opcional
-                    return null;
-                  },
-                  onSaved: (value) {
-                    usuario = value ?? '';
-                  },
-                ),
-                SizedBox(height: 20),
-                TextFormField(
-                  controller: TextEditingController(text: password),
-                  style: TextStyle(color: Colors.black87),
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            showPassword ? Icons.visibility_off : Icons.visibility,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                          onPressed: () {
-                            setDialogState(() {
-                              showPassword = !showPassword;
-                            });
-                          },
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: passwordController,
+                      style: TextStyle(color: Colors.grey[700]),
+                      obscureText: !showPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Contraseña',
+                        prefixIcon: Icon(Icons.lock),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                showPassword ? Icons.visibility_off : Icons.visibility,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  showPassword = !showPassword;
+                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.refresh),
+                              onPressed: () {
+                                passwordController.text = generateRandomPassword();
+                                // Mostrar la contraseña nueva automáticamente
+                                setState(() {
+                                  showPassword = true;
+                                });
+                              },
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: Icon(Icons.refresh, color: Theme.of(context).primaryColor),
-                          tooltip: 'Generar contraseña segura',
-                          onPressed: () {
-                            final newPassword = generateRandomPassword();
-                            setDialogState(() {
-                              password = newPassword;
-                              showPassword = true;
-                            });
-                          },
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  obscureText: !showPassword,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingresa la contraseña';
+                    SizedBox(height: 24),
+                    
+                    // Selector de carpeta
+                    InkWell(
+                      onTap: () {
+                        // En lugar de cerrar y volver a abrir el diálogo, muestra el selector de carpetas
+                        // como otro diálogo modal que se abrirá encima del actual
+                        _showFolderSelectorDialog(
+                          context, 
+                          selectedFolderIds, 
+                          (newSelectedIds, newSelectedName) {
+                            // Actualizar los IDs y nombre seleccionados
+                            setState(() {
+                              selectedFolderIds = newSelectedIds;
+                              selectedFolderName = newSelectedName;
+                            });
+                          }
+                        );
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.folder_outlined, color: Theme.of(context).primaryColor),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                selectedFolderIds.isEmpty 
+                                  ? 'Seleccionar carpeta (opcional)' 
+                                  : 'Carpeta: $selectedFolderName',
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    // Validar campos
+                    if (siteController.text.isEmpty || 
+                        usernameController.text.isEmpty || 
+                        passwordController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Por favor, completa todos los campos')),
+                      );
+                      return;
                     }
-                    return null;
+                    
+                    // Crear nueva contraseña
+                    final newPassword = Password(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      sitio: siteController.text,
+                      usuario: usernameController.text,
+                      password: passwordController.text,
+                      fechaCreacion: DateTime.now(),
+                      ultimaModificacion: DateTime.now(),
+                      isFavorite: false,
+                      isInTrash: false,
+                      folderIds: selectedFolderIds,
+                    );
+                    
+                    // Guardar contraseña
+                    Provider.of<PasswordService>(context, listen: false).addPassword(newPassword);
+                    
+                    Navigator.pop(context);
+                    
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Contraseña añadida correctamente')),
+                    );
                   },
-                  onSaved: (value) {
-                    password = value ?? '';
-                  },
-                  onChanged: (value) {
-                    password = value;
-                  },
+                  child: Text('Guardar'),
                 ),
               ],
-            ),
-          ),
+            );
+          }
         );
-      }
+      },
     );
-
-    List<Widget> actions = [
-      TextButton(
-        onPressed: () {
-          Navigator.of(context).pop();
-        },
-        style: TextButton.styleFrom(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-        child: Text('Cancelar', style: TextStyle(fontSize: 16)),
-      ),
-      SizedBox(width: 8),
-      ElevatedButton(
-        onPressed: () async {
-          if (formKey.currentState!.validate()) {
-            formKey.currentState!.save();
-            
-            // Mostrar indicador de carga
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (BuildContext context) {
-                return Dialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+  }
+  
+  // Método para mostrar el selector de carpetas como un diálogo superpuesto
+  void _showFolderSelectorDialog(
+    BuildContext context,
+    List<String> currentSelectedIds,
+    Function(List<String>, String) onSelect
+  ) {
+    List<String> selectedFolderIds = List.from(currentSelectedIds);
+    String selectedFolderName = '';
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Seleccionar carpeta'),
+          content: Container(
+            width: double.maxFinite,
+            height: 300,
+            child: FutureBuilder(
+              future: _getFolders(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error al cargar carpetas'));
+                }
+                
+                final folders = snapshot.data ?? [];
+                
+                if (folders.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(width: 24),
-                        Text("Guardando contraseña...", style: TextStyle(fontSize: 16)),
+                        Icon(Icons.folder_outlined, size: 48, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          'No tienes carpetas creadas',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.pushNamed(context, '/folders');
+                          },
+                          child: Text('Crear carpeta'),
+                        ),
                       ],
                     ),
-                  ),
+                  );
+                }
+                
+                return StatefulBuilder(
+                  builder: (context, setState) {
+                    return ListView(
+                      children: [
+                        // Opción "Sin carpeta"
+                        ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.folder_off,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          title: Text(
+                            'Sin carpeta',
+                            style: TextStyle(color: Colors.grey[700]),
+                          ),
+                          selected: selectedFolderIds.isEmpty,
+                          trailing: selectedFolderIds.isEmpty
+                            ? Icon(Icons.check_circle, color: Colors.green)
+                            : null,
+                          onTap: () {
+                            setState(() {
+                              selectedFolderIds = [];
+                              selectedFolderName = '';
+                            });
+                          },
+                        ),
+                        Divider(),
+                        
+                        // Lista de carpetas
+                        ...folders.map((folder) {
+                          // Convertir color hexadecimal a Color de Flutter
+                          Color folderColor;
+                          try {
+                            final buffer = StringBuffer();
+                            buffer.write('ff'); // Opacidad completa
+                            buffer.write(folder.color.replaceFirst('#', ''));
+                            folderColor = Color(int.parse(buffer.toString(), radix: 16));
+                          } catch (e) {
+                            // Usar color predeterminado si hay error
+                            folderColor = Colors.blue;
+                          }
+                          
+                          final isSelected = selectedFolderIds.contains(folder.id);
+                          
+                          return ListTile(
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: folderColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.folder,
+                                color: Colors.white,
+                              ),
+                            ),
+                            title: Text(
+                              folder.name,
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            trailing: isSelected
+                              ? Icon(Icons.check_circle, color: Colors.green)
+                              : null,
+                            onTap: () {
+                              setState(() {
+                                if (isSelected) {
+                                  selectedFolderIds.remove(folder.id);
+                                  selectedFolderName = '';
+                                } else {
+                                  selectedFolderIds = [folder.id];
+                                  selectedFolderName = folder.name;
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ],
+                    );
+                  }
                 );
               },
-            );
-            
-            try {
-              final passwordService = Provider.of<PasswordService>(context, listen: false);
-              
-              // Crear nueva Password
-              final newPassword = Password(
-                sitio: sitio,
-                usuario: usuario,
-                password: password,
-              );
-              
-              // Guardar la contraseña
-              await passwordService.addPassword(newPassword);
-              
-              // Cerrar el diálogo de carga y el formulario
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-              
-              // Mostrar mensaje de éxito
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Contraseña guardada correctamente'),
-                  backgroundColor: Colors.green,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            } catch (e) {
-              // Cerrar el diálogo de carga
-              Navigator.of(context).pop();
-              
-              // Mostrar error
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Error al guardar la contraseña: $e'),
-                  backgroundColor: Colors.red,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            }
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            ),
           ),
-        ),
-        child: Text('Guardar', style: TextStyle(fontSize: 16)),
-      ),
-    ];
-
-    _showModernModal(
-      context,
-      content,
-      title: 'Nueva contraseña',
-      actions: actions,
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                onSelect(selectedFolderIds, selectedFolderName);
+              },
+              child: Text('Aceptar'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1506,19 +1801,31 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: title.isNotEmpty ? CrossAxisAlignment.start : CrossAxisAlignment.center,
                   children: [
                     if (title.isNotEmpty) 
                       Padding(
                         padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white, // Color de texto blanco para el título
-                          ),
-                        ),
+                        child: title == 'Eliminar permanentemente' 
+                          ? Center(
+                              child: Text(
+                                title,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            )
+                          : Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                       ),
                     Padding(
                       padding: const EdgeInsets.all(24.0),
@@ -1537,6 +1844,479 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  // Mostrar el menú de selección de carpetas
+  void _showFolderSelectionMenu(BuildContext context) {
+    // Obtener la lista de contraseñas para el conteo
+    final passwordService = Provider.of<PasswordService>(context, listen: false);
+    passwordService.getPasswords().first.then((passwords) {
+      showModalBottomSheet(
+        context: context,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (context) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+                children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Text(
+                      'Seleccionar carpeta',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    Spacer(),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                ],
+              ),
+            ),
+              Divider(height: 0),
+              FutureBuilder(
+                future: _getFolders(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+                  
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Text(
+                          'Error al cargar las carpetas',
+                          style: TextStyle(color: Colors.grey[700]),
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  final folders = snapshot.data ?? [];
+                  
+                  if (folders.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        children: [
+                          Icon(Icons.folder_outlined, size: 48, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            'No tienes carpetas creadas',
+                            style: TextStyle(
+                              fontSize: 16, 
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Crea carpetas para organizar tus contraseñas',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              Navigator.pushNamed(context, '/folders');
+                            },
+                            child: Text('Crear carpeta'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  
+                  return Expanded(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        // Opción para mostrar todas las contraseñas
+                        ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.home,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          title: Text(
+                            'Todas las contraseñas',
+                            style: TextStyle(color: Colors.grey[700]),
+                          ),
+                          selected: _selectedFolderId == null,
+                          onTap: () {
+                            setState(() {
+                              _selectedFolderId = null;
+                            });
+                            Navigator.pop(context);
+                          },
+                        ),
+                        Divider(),
+                        // Lista de carpetas
+                        ...folders.map((folder) {
+                          // Convertir color hexadecimal a Color de Flutter
+                          Color folderColor;
+                          try {
+                            final buffer = StringBuffer();
+                            buffer.write('ff'); // Opacidad completa
+                            buffer.write(folder.color.replaceFirst('#', ''));
+                            folderColor = Color(int.parse(buffer.toString(), radix: 16));
+                          } catch (e) {
+                            // Usar color predeterminado si hay error
+                            folderColor = Colors.blue;
+                          }
+                          
+                          // Contar las contraseñas que pertenecen a esta carpeta
+                          final passwordCount = passwords.where((p) => p.folderIds.contains(folder.id)).length;
+                          
+                          return ListTile(
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: folderColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.folder,
+                                color: Colors.white,
+                              ),
+                            ),
+                            title: Text(
+                              folder.name,
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            subtitle: Text(
+                              '$passwordCount contraseña${passwordCount != 1 ? 's' : ''}',
+                              style: TextStyle(color: Colors.grey[500]),
+                            ),
+                            onTap: () {
+                              setState(() {
+                                _selectedFolderId = folder.id;
+                              });
+                              Navigator.pop(context);
+                            },
+                          );
+                        }).toList(),
+                        Divider(),
+                        // Opción para crear nueva carpeta
+                        ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).primaryColor.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.add,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ),
+                          title: Text(
+                            'Crear nueva carpeta',
+                            style: TextStyle(
+                              color: Theme.of(context).primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.pushNamed(context, '/folders');
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      );
+    });
+  }
+  
+  // Obtener lista de carpetas
+  Future<List<dynamic>> _getFolders() async {
+    try {
+      // Simular carga de datos para dar tiempo a la UI
+      await Future.delayed(Duration(milliseconds: 300));
+      
+      // Intentar obtener las carpetas de forma síncrona
+      final folders = await _folderService.getFolders().first;
+      return folders;
+    } catch (e) {
+      print('Error al cargar carpetas: $e');
+      return [];
+    }
+  }
+  
+  // Mostrar diálogo para añadir contraseña a una carpeta
+  void _showAddToFolderDialog(Password password) {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Text(
+                    'Añadir a carpeta',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  Spacer(),
+                  IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 0),
+            FutureBuilder(
+              future: _getFolders(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text(
+                        'Error al cargar las carpetas',
+                        style: TextStyle(color: Colors.grey[700]),
+                      ),
+                    ),
+                  );
+                }
+                
+                final folders = snapshot.data ?? [];
+                
+                if (folders.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        Icon(Icons.folder_outlined, size: 48, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          'No tienes carpetas creadas',
+                          style: TextStyle(
+                            fontSize: 16, 
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Crea carpetas para organizar tus contraseñas',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.pushNamed(context, '/folders');
+                          },
+                          child: Text('Crear carpeta'),
+            ),
+          ],
+        ),
+                  );
+                }
+                
+                return Expanded(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      // Opción para quitar la contraseña de todas las carpetas
+                      if (password.folderIds.isNotEmpty)
+                        Column(
+                          children: [
+                            ListTile(
+                              leading: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade200,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.folder_off,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              title: Text(
+                                'Quitar de todas las carpetas',
+                                style: TextStyle(
+                                  color: Colors.red[700],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'La contraseña aparecerá solo en "Todas las contraseñas"',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                              onTap: () async {
+                                try {
+                                  final passwordService = Provider.of<PasswordService>(context, listen: false);
+                                  
+                                  // Crear una copia de la contraseña con folderIds vacío
+                                  final updatedPassword = password.copyWith(folderIds: []);
+                                  await passwordService.updatePassword(updatedPassword);
+                                  
+                                  Navigator.pop(context);
+                                  
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Contraseña quitada de todas las carpetas'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error: $e'),
+                                      backgroundColor: Colors.red,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                            Divider(),
+                          ],
+                        ),
+                        
+                      // Lista de carpetas
+                      ...folders.map((folder) {
+                        // Convertir color hexadecimal a Color de Flutter
+                        Color folderColor;
+                        try {
+                          final buffer = StringBuffer();
+                          buffer.write('ff'); // Opacidad completa
+                          buffer.write(folder.color.replaceFirst('#', ''));
+                          folderColor = Color(int.parse(buffer.toString(), radix: 16));
+                        } catch (e) {
+                          // Usar color predeterminado si hay error
+                          folderColor = Colors.blue;
+                        }
+                        
+                        // Verificar si la contraseña ya está en esta carpeta
+                        bool isInFolder = password.folderIds.contains(folder.id);
+                        
+                        return ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: folderColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.folder,
+                              color: Colors.white,
+                            ),
+                          ),
+                          title: Text(
+                            folder.name,
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          trailing: isInFolder 
+                            ? Icon(Icons.check_circle, color: Colors.green)
+                            : null,
+                          onTap: () async {
+                            try {
+                              final passwordService = Provider.of<PasswordService>(context, listen: false);
+                              
+                              // Si ya está en la carpeta, removerla
+                              if (isInFolder) {
+                                final updatedPassword = password.removeFromFolder(folder.id);
+                                await passwordService.updatePassword(updatedPassword);
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Contraseña eliminada de ${folder.name}'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              } 
+                              // Si no está en la carpeta, añadirla
+                              else {
+                                final updatedPassword = password.addToFolder(folder.id);
+                                await passwordService.updatePassword(updatedPassword);
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Contraseña añadida a ${folder.name}'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                              
+                              Navigator.pop(context);
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: $e'),
+                                  backgroundColor: Colors.red,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
         );
       },
     );

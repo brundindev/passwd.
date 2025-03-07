@@ -191,6 +191,8 @@ class TrashPasswordsScreen extends StatelessWidget {
   void _deletePasswordPermanently(BuildContext context, Password password) async {
     Widget content = Column(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
           width: 70,
@@ -207,7 +209,7 @@ class TrashPasswordsScreen extends StatelessWidget {
         ),
         SizedBox(height: 24),
         Text(
-          '¿Estás seguro de que quieres eliminar esta contraseña permanentemente?',
+          '¿Estás seguro de que quieres eliminar permanentemente todas las contraseñas de la papelera?',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 16,

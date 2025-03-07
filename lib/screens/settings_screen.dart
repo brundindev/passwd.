@@ -9,7 +9,7 @@ import '../services/inactivity_detector.dart';
 import 'package:path_provider/path_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   _SettingsScreenState createState() => _SettingsScreenState();
