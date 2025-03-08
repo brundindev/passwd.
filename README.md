@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="#"><img src="https://github.com/user-attachments/assets/ea530347-8442-42b6-96f2-1dfa0891a895" alt="Gestor de Contraseñas" width="200"></a>
+  <a href="#"><img src="assets/logo_passwd.JPEG" alt="Gestor de Contraseñas" width="200"></a>
   <br>
   🔐 Gestor de Contraseñas - PASSWD.
   <br>
