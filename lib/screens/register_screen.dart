@@ -375,17 +375,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Fondo con gradiente
+          // Fondo con GIF animado
+          SizedBox.expand(
+            child: Image.asset(
+              'assets/background.gif',
+              fit: BoxFit.cover,
+            ),
+          ),
+          
+          // Capa de oscurecimiento para mejorar legibilidad
           Container(
             decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment.center,
-                radius: 1.2,
-                colors: [
-                  Colors.black.withOpacity(0.7),
-                  Colors.black,
-                ],
-              ),
+              color: Colors.black.withOpacity(0.6),
             ),
           ),
           

@@ -18,6 +18,7 @@ import 'services/password_service.dart';
 import 'services/app_settings_service.dart';
 import 'services/inactivity_detector.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'services/web_extension_service.dart';
 
 // Definir colores de la aplicación
 class AppColors {
@@ -64,6 +65,10 @@ void main() async {
   }
   
   print("Configurando proveedores de la aplicación...");
+  
+  // Iniciar el servidor web para la extensión del navegador
+  await WebExtensionService().startServer();
+  
   runApp(
     MultiProvider(
       providers: [

@@ -35,6 +35,61 @@ class PasswordService {
       );
   }
   
+  // Nuevo método: Obtener contraseñas por sitio web
+  Future<List<Password>> getPasswordsForSite(String sitio) async {
+    if (userId == null) {
+      throw Exception('Usuario no autenticado');
+    }
+    
+    // Comprobamos si el sitio es un dominio exacto o si necesitamos buscar coincidencias parciales
+    final query = await passwordsCollection
+      .where('isInTrash', isEqualTo: false)
+      .get();
+      
+    final List<Password> passwords = query.docs
+      .map((doc) => Password.fromMap(doc.id, doc.data()))
+      .toList();
+      
+    // Filtramos para encontrar coincidencias con el sitio/dominio
+    return passwords.where((password) {
+      // Convertimos ambos a minúsculas para una comparación insensible a mayúsculas
+      final passwordSitio = password.sitio.toLowerCase();
+      final searchSitio = sitio.toLowerCase();
+      
+      // Primero buscamos coincidencia exacta
+      if (passwordSitio == searchSitio) {
+        return true;
+      }
+      
+      // Luego buscamos si el sitio está contenido en la URL guardada o viceversa
+      if (passwordSitio.contains(searchSitio) || searchSitio.contains(passwordSitio)) {
+        return true;
+      }
+      
+      // Finalmente, intentamos extraer el dominio base y comparar
+      try {
+        // Convertimos a URL si es posible
+        Uri? passwordUri = Uri.tryParse(passwordSitio);
+        Uri? searchUri = Uri.tryParse(searchSitio);
+        
+        if (passwordUri != null && searchUri != null) {
+          // Comparamos los hosts (dominios)
+          return passwordUri.host == searchUri.host;
+        }
+        
+        // Si alguno no es una URL válida, comprobamos si uno contiene al otro
+        if (passwordSitio.contains(searchSitio) || searchSitio.contains(passwordSitio)) {
+          return true;
+        }
+      } catch (_) {
+        // Si ocurre algún error, fallback a la comparación simple
+        return passwordSitio.contains(searchSitio) || searchSitio.contains(passwordSitio);
+      }
+      
+      return false;
+    }).toList();
+  }
+  
   // Obtener las contraseñas favoritas del usuario
   Stream<List<Password>> getFavoritePasswords() {
     final user = FirebaseAuth.instance.currentUser;
