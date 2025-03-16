@@ -93,6 +93,36 @@ class _LoginScreenState extends State<LoginScreen> {
         
         print("Login exitoso. UID: ${result.user?.uid}");
         
+        // Verificar si el correo está verificado
+        final user = result.user;
+        if (user != null && !user.emailVerified) {
+          // Si el correo no está verificado, enviar un nuevo correo y mostrar mensaje
+          try {
+            await user.sendEmailVerification();
+            print("Reenviado correo de verificación a: ${user.email}");
+          } catch (verificationError) {
+            print("Error al reenviar correo de verificación: $verificationError");
+            // Continuamos aunque haya error
+          }
+          
+          // Cerrar sesión ya que el correo no está verificado
+          await authService.signOut();
+          
+          // Esperar un poco para hacer visible la carga
+          await Future.delayed(Duration(milliseconds: 800));
+          
+          if (mounted) {
+            // Cerrar el diálogo de carga
+            Navigator.of(context).pop();
+            
+            setState(() {
+              _isLoading = false;
+              _errorMessage = "Por favor, verifica tu correo electrónico antes de iniciar sesión. Hemos enviado un nuevo correo de verificación.";
+            });
+          }
+          return;
+        }
+        
         // Esperar un poco para hacer visible la carga
         await Future.delayed(Duration(milliseconds: 800));
         
@@ -197,6 +227,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       
       print("Login con Google exitoso. UID: ${result.user?.uid}");
+      
+      // Google ya verifica los correos electrónicos, no es necesario comprobar ni enviar verificación
       
       // Esperar un poco para hacer visible la carga
       await Future.delayed(Duration(milliseconds: 800));

@@ -249,11 +249,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => SettingsScreen()),
-                );
-              },
-            ),
-          ],
-        ),
+              );
+            },
+          ),
+        ],
+      ),
       ),
       body: Column(
         children: [
@@ -1430,7 +1430,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     
     showDialog(
-      context: context,
+                context: context,
       builder: (dialogContext) {
         final TextEditingController siteController = TextEditingController();
         final TextEditingController usernameController = TextEditingController();
@@ -1546,13 +1546,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
+                  actions: [
+                    TextButton(
                   onPressed: () {
                     Navigator.pop(context);
                   },
-                  child: Text('Cancelar'),
-                ),
+                      child: Text('Cancelar'),
+                    ),
                 ElevatedButton(
                   onPressed: () {
                     // Validar campos
@@ -1834,7 +1834,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (actions != null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                        child: Row(
+              child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: actions,
                         ),

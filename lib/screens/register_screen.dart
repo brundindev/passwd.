@@ -30,155 +30,128 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-      
-      // Mostrar diálogo de carga
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            elevation: 16,
-            child: Container(
-              padding: const EdgeInsets.all(24.0),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: 50, 
-                    width: 50, 
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-                      strokeWidth: 5,
-                    )
-                  ),
-                  SizedBox(height: 24),
-                  Text(
-                    'Creando tu cuenta...',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Esto solo tomará un momento',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-      
-      // Configurar un timeout de seguridad para cerrar el diálogo después de 10 segundos
-      // independientemente de lo que suceda
-      Future.delayed(Duration(seconds: 10)).then((_) {
-        if (mounted && Navigator.of(context).canPop()) {
-          print("Timeout de seguridad activado para cerrar el diálogo de carga");
-          try {
-            Navigator.of(context).pop();
-          } catch (e) {
-            print("Error al cerrar el diálogo por timeout: $e");
-          }
-        }
-      });
-      
-      try {
-        print("Iniciando proceso de registro...");
-        final authService = Provider.of<AuthService>(context, listen: false);
+    // Cerrar el teclado
+    FocusScope.of(context).unfocus();
+    
+    // Validar el formulario
+    if (!_formKey.currentState!.validate()) {
+      print("Validación del formulario falló");
+      return;
+    }
+    
+    // Mostrar indicador de carga
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    // Obtener valores de los controladores
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    
+    print("Iniciando registro para email: $email");
+    
+    // Configurar un timeout global para todo el proceso
+    bool timeoutOccurred = false;
+    Future.delayed(Duration(seconds: 10)).then((_) {
+      if (_isLoading && mounted) {
+        print("⚠️ TIMEOUT GLOBAL EN REGISTRO - Forzando finalización");
+        timeoutOccurred = true;
+        setState(() {
+          _isLoading = false;
+        });
         
-        // Registrar al usuario
-        final result = await authService.registerWithEmailAndPassword(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('El registro tardó demasiado tiempo, pero tu cuenta ha sido creada. Intenta iniciar sesión.'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 6),
+          ),
         );
         
-        print("Registro exitoso. UID: ${result.user?.uid}");
-        
-        // Verificar que el usuario esté autenticado
-        final currentUser = FirebaseAuth.instance.currentUser;
-        print("Verificando estado de autenticación después del registro: ${currentUser?.uid ?? 'No autenticado'}");
-        
-        // Esperar un poco para hacer visible la carga
-        await Future.delayed(Duration(milliseconds: 800));
-        
-        if (mounted) {
-          // Cerrar el diálogo de carga
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-          }
-          
-          // Cerrar sesión después del registro exitoso
-          try {
-            await authService.signOut();
-            print("Sesión cerrada después del registro exitoso");
-          } catch (signOutError) {
-            print("Error al cerrar sesión: $signOutError");
-            // Continuamos con el flujo aunque haya error al cerrar sesión
-          }
-          
-          // Detener completamente la carga
-          setState(() {
-            _isLoading = false;
-          });
-          
-          // Mostrar mensaje de éxito
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Cuenta creada correctamente. Por favor inicia sesión.'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
-          
-          print("Navegando a la pantalla de login...");
-          
-          // Usar una navegación más simple y directa posible
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => LoginScreen()),
-            );
-          }
-        }
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    });
+    
+    try {
+      // Paso 1: Registrar usuario
+      final authService = Provider.of<AuthService>(context, listen: false);
+      UserCredential userCredential = await authService.registerWithEmailAndPassword(email, password);
+      print("✅ Usuario registrado con UID: ${userCredential.user!.uid}");
+      
+      // Paso 2: Intentar enviar verificación (saltamos al paso 3 si hay error)
+      bool emailVerificationSent = false;
+      try {
+        print("📧 Intentando enviar correo de verificación...");
+        await userCredential.user!.sendEmailVerification();
+        emailVerificationSent = true;
+        print("✅ Correo de verificación enviado con éxito");
       } catch (e) {
-        print("Error durante el registro: $e");
+        print("⚠️ Error al enviar correo: $e");
+        // Continuamos aunque falle el envío del correo
+      }
+      
+      // Paso 3: Cerrar sesión
+      try {
+        await authService.signOut();
+        print("✅ Usuario desconectado después del registro");
+      } catch (e) {
+        print("⚠️ Error al cerrar sesión: $e");
+        // Continuamos aunque falle el cierre de sesión
+      }
+      
+      // Paso 4: Actualizar UI y mostrar el popup (solo si no ha ocurrido timeout)
+      if (!timeoutOccurred && mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         
-        // Cerrar el diálogo de carga
-        if (mounted) {
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
+        // Mostrar el popup de verificación de email
+        _showEmailVerificationDialog(email, emailVerificationSent);
+      }
+    } catch (e) {
+      print("❌ ERROR EN REGISTRO: $e");
+      
+      // Manejar el error solo si no ha ocurrido timeout
+      if (!timeoutOccurred && mounted) {
+        String errorMsg = 'Error al registrar: $e';
+        
+        if (e.toString().contains('email-already-in-use')) {
+          errorMsg = 'Este correo ya está registrado. Intenta iniciar sesión.';
+        } else if (e.toString().contains('weak-password')) {
+          errorMsg = 'La contraseña es demasiado débil. Usa al menos 6 caracteres.';
+        } else if (e.toString().contains('invalid-email')) {
+          errorMsg = 'El formato del correo electrónico no es válido.';
+        } else if (e.toString().contains('network')) {
+          errorMsg = 'Error de conexión a Internet. Comprueba tu conexión y vuelve a intentarlo.';
+        } else if (e.toString().contains('timeout')) {
+          errorMsg = 'El registro ha tardado demasiado tiempo. Por favor, inténtalo de nuevo.';
+        } else if (e.toString().contains('Error durante el inicio de sesión con Google')) {
+          errorMsg = 'Error durante el registro con Google. Por favor, inténtalo de nuevo.';
+        } else {
+          // Intentar usar el servicio de manejo de errores para obtener un mensaje más específico
+          try {
+            final authService = Provider.of<AuthService>(context, listen: false);
+            errorMsg = authService.handleAuthError(e);
+          } catch (_) {
+            // Si falla, seguir usando el mensaje por defecto
           }
-          
-          setState(() {
-            try {
-              final authService = Provider.of<AuthService>(context, listen: false);
-              _errorMessage = authService.handleAuthError(e);
-            } catch (handlerError) {
-              print("Error al manejar el error: $handlerError");
-              _errorMessage = "Ocurrió un error durante el registro: $e";
-            }
-            _isLoading = false;
-          });
         }
+        
+        setState(() {
+          _isLoading = false;
+          _errorMessage = errorMsg;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 4),
+          ),
+        );
       }
     }
   }
@@ -245,16 +218,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
       
-      // Configurar un timeout de seguridad para cerrar el diálogo después de 30 segundos
+      // Aumentamos el timeout a 30 segundos para dar más tiempo al primer intento
       Future<void> timeoutFuture = Future.delayed(Duration(seconds: 30)).then((_) {
-        if (mounted && isDialogShowing && Navigator.of(context).canPop()) {
+        if (mounted && isDialogShowing && Navigator.of(context, rootNavigator: true).canPop()) {
           print("Timeout de seguridad activado para cerrar el diálogo de carga en Google Sign-In");
           try {
-            Navigator.of(context).pop();
+            Navigator.of(context, rootNavigator: true).pop();
             isDialogShowing = false;
             setState(() {
               _isLoading = false;
-              _errorMessage ??= "No se pudo completar el registro con Google. Por favor, inténtalo de nuevo.";
+              _errorMessage = "La conexión con Google está tardando demasiado. Por favor, inténtalo de nuevo.";
             });
           } catch (e) {
             print("Error al cerrar el diálogo por timeout: $e");
@@ -265,19 +238,103 @@ class _RegisterScreenState extends State<RegisterScreen> {
       print("Iniciando proceso de registro con Google...");
       final authService = Provider.of<AuthService>(context, listen: false);
       
-      // Usar Future.any para manejar tanto el timeout como la autenticación
-      await Future.any([
-        timeoutFuture,
-        _attemptGoogleSignIn(authService),
-      ]);
+      // Intentamos directamente la autenticación con Google sin usar Future.any
+      // para evitar posibles interrupciones tempranas
+      try {
+        final result = await authService.signInWithGoogle();
+        
+        // Si llegamos aquí, cancelamos el timeout
+        timeoutFuture.ignore();
+        
+        print("Registro con Google exitoso. UID: ${result.user?.uid}");
+      
+        // Verificar que el usuario esté autenticado
+        final currentUser = FirebaseAuth.instance.currentUser;
+        print("Verificando estado de autenticación después del registro con Google: ${currentUser?.uid ?? 'No autenticado'}");
+        
+        if (currentUser == null) {
+          throw Exception("El usuario no fue autenticado correctamente después del registro con Google");
+        }
+        
+        // Esperar un poco para hacer visible la carga
+        await Future.delayed(Duration(milliseconds: 800));
+        
+        if (mounted) {
+          // Cerrar el diálogo de carga si está abierto
+          if (isDialogShowing && Navigator.of(context, rootNavigator: true).canPop()) {
+            try {
+              Navigator.of(context, rootNavigator: true).pop();
+              isDialogShowing = false;
+            } catch (navError) {
+              print("Error al cerrar diálogo: $navError");
+            }
+          }
+          
+          // Detener completamente la carga
+          setState(() {
+            _isLoading = false;
+          });
+          
+          // Mostrar mensaje de éxito
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Cuenta de Google vinculada correctamente. ¡Bienvenido a PASSWD!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          
+          print("Navegando a la pantalla principal (HomeScreen)...");
+          
+          // Navegar directamente a HomeScreen
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home',
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        print("Error específico en la autenticación con Google: $e");
+        
+        // Cancelamos el timeout ya que ya tenemos un error
+        timeoutFuture.ignore();
+        
+        if (mounted) {
+          // Cerrar el diálogo de carga si está abierto
+          if (isDialogShowing && Navigator.of(context, rootNavigator: true).canPop()) {
+            try {
+              Navigator.of(context, rootNavigator: true).pop();
+              isDialogShowing = false;
+            } catch (navError) {
+              print("Error al cerrar diálogo: $navError");
+            }
+          }
+          
+          setState(() {
+            _isLoading = false;
+            
+            // Mensaje de error más específico según el tipo de error
+            if (e.toString().contains('canceled')) {
+              _errorMessage = "Se canceló el inicio de sesión con Google. Por favor, inténtalo de nuevo.";
+            } else if (e.toString().contains('network')) {
+              _errorMessage = "Error de conexión. Verifica tu conexión a internet e inténtalo de nuevo.";
+            } else if (e.toString().contains('credential')) {
+              _errorMessage = "Error de credenciales. Por favor, inténtalo de nuevo con otra cuenta de Google.";
+            } else {
+              _errorMessage = "No se pudo completar el registro con Google. Por favor, inténtalo de nuevo.";
+            }
+          });
+        }
+      }
       
     } catch (e) {
-      print("Error durante el registro con Google: $e");
+      print("Error general durante el registro con Google: $e");
       
       // Cerrar el diálogo de carga si está abierto
-      if (mounted && isDialogShowing && Navigator.of(context).canPop()) {
+      if (mounted && isDialogShowing && Navigator.of(context, rootNavigator: true).canPop()) {
         try {
-          Navigator.of(context).pop();
+          Navigator.of(context, rootNavigator: true).pop();
           isDialogShowing = false;
         } catch (navError) {
           print("Error al cerrar diálogo: $navError");
@@ -286,88 +343,179 @@ class _RegisterScreenState extends State<RegisterScreen> {
       
       if (mounted) {
         setState(() {
+          _isLoading = false;
           try {
+            // Intentar usar el servicio de manejo de errores para obtener un mensaje más específico
             final authService = Provider.of<AuthService>(context, listen: false);
             _errorMessage = authService.handleAuthError(e);
-            print("Mensaje de error manejado: $_errorMessage");
-          } catch (handlerError) {
-            print("Error al manejar el error: $handlerError");
-            _errorMessage = "Ocurrió un error durante el registro con Google: $e";
+          } catch (_) {
+            _errorMessage = "Ocurrió un error inesperado durante el registro con Google. Por favor, inténtalo de nuevo más tarde.";
           }
-          _isLoading = false;
         });
       }
     }
   }
-  
-  // Método separado para el intento de inicio de sesión con Google
-  Future<void> _attemptGoogleSignIn(AuthService authService) async {
-    try {
-      // Intentar la autenticación con Google
-      final result = await authService.signInWithGoogle();
-      print("Registro con Google exitoso. UID: ${result.user?.uid}");
-      
-      // Verificar que el usuario esté autenticado
-      final currentUser = FirebaseAuth.instance.currentUser;
-      print("Verificando estado de autenticación después del registro con Google: ${currentUser?.uid ?? 'No autenticado'}");
-      
-      if (currentUser == null) {
-        throw Exception("El usuario no fue autenticado correctamente después del registro con Google");
-      }
-      
-      // Esperar un poco para hacer visible la carga
-      await Future.delayed(Duration(milliseconds: 800));
-      
-      if (mounted) {
-        // Cerrar el diálogo de carga si está abierto
-        if (Navigator.of(context).canPop()) {
-          try {
-            Navigator.of(context).pop();
-          } catch (navError) {
-            print("Error al cerrar diálogo: $navError");
-          }
-        }
-        
-        // Cerrar sesión después del registro exitoso
-        try {
-          await authService.signOut();
-          print("Sesión con Google cerrada después del registro exitoso");
-        } catch (signOutError) {
-          print("Error al cerrar sesión de Google: $signOutError");
-          // Continuamos con el flujo aunque haya error al cerrar sesión
-        }
-        
-        // Detener completamente la carga
-        setState(() {
-          _isLoading = false;
-        });
-        
-        // Mostrar mensaje de éxito
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cuenta de Google vinculada correctamente. Por favor inicia sesión.'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+
+  // Método para mostrar el diálogo de verificación de email
+  void _showEmailVerificationDialog(String email, bool emailSent) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 28,
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Verificación de Email',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (emailSent)
+                Text(
+                  'Hemos enviado un correo de verificación a:',
+                  style: TextStyle(fontSize: 14),
+                )
+              else
+                Text(
+                  'Se ha creado tu cuenta pero hubo un problema al enviar el correo de verificación a:',
+                  style: TextStyle(fontSize: 14),
+                ),
+              SizedBox(height: 8),
+              Text(
+                email,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: emailSent ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: emailSent ? Colors.green.shade300 : Colors.orange.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          emailSent ? Icons.info_outline : Icons.warning_amber_outlined, 
+                          color: emailSent ? Colors.green : Colors.orange, 
+                          size: 20
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            emailSent
+                                ? 'Por favor, verifica tu correo electrónico antes de iniciar sesión.'
+                                : 'No pudimos enviar el correo de verificación. Podrás solicitar uno nuevo desde la pantalla de inicio de sesión.',
+                            style: TextStyle(
+                              color: emailSent ? Colors.green.shade800 : Colors.orange.shade800,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (emailSent) ...[
+                      SizedBox(height: 10),
+                      Text(
+                        'Revisa tu bandeja de entrada y haz clic en el enlace de verificación que hemos enviado.',
+                        style: TextStyle(
+                          color: Colors.green.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            if (emailSent)
+              TextButton(
+                onPressed: () async {
+                  try {
+                    // Intentar reenviar el correo de verificación
+                    final authService = Provider.of<AuthService>(context, listen: false);
+                    
+                    // Iniciar sesión temporalmente
+                    try {
+                      final result = await authService.signInWithEmailAndPassword(
+                        email,
+                        _passwordController.text.trim(),
+                      );
+                      await result.user?.sendEmailVerification();
+                      await authService.signOut();
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Correo de verificación reenviado'),
+                          backgroundColor: Colors.green,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    } catch (e) {
+                      print("Error al reenviar verificación: $e");
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('No se pudo reenviar el correo de verificación'),
+                          backgroundColor: Colors.red,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    print("Error general al reenviar correo: $e");
+                  }
+                },
+                child: Text('Reenviar correo'),
+              ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text('Ir a iniciar sesión'),
+            ),
+          ],
         );
-        
-        print("Navegando a la pantalla de login...");
-        
-        // Usar una navegación más simple y directa posible
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => LoginScreen()),
-          );
-        }
-      }
-    } catch (e) {
-      print("Error en _attemptGoogleSignIn: $e");
-      rethrow; // Re-lanzar para que sea manejado por el catch principal
-    }
+      },
+    );
   }
 
   @override
