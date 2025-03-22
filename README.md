@@ -11,7 +11,7 @@
 <h4 align="center">Una aplicación multiplataforma para almacenar, cifrar y gestionar contraseñas de manera segura, construida con <a href="https://flutter.dev/" target="_blank">Flutter</a> y <a href="https://firebase.google.com/" target="_blank">Firebase</a>.</h4>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/github/v/release/brundindev/gestor-passwords" alt="Versión"></a>
+  <a href="#"><img src="https://img.shields.io/github/v/release/brundindev/passwd." alt="Versión"></a>
   <a href="#"><img src="https://img.shields.io/badge/security-high-green.svg" alt="Seguridad Alta"></a>
   <a href="#"><img src="https://img.shields.io/badge/flutter-3.x-blue.svg" alt="Flutter"></a>
   <a href="#"><img src="https://img.shields.io/badge/donate-%24-ff69b4.svg" alt="Donar"></a>
