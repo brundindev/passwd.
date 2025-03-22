@@ -34,9 +34,9 @@
 ## ⭐ Características Principales
 
 ✅ **Cifrado de alto nivel** 🔑  
-Tus contraseñas son encriptadas con **AES-256**, garantizando máxima seguridad.  
+Tus contraseñas son encriptadas con **Base-64**, garantizando máxima seguridad.  
 
-✅ **Autenticación con Biometría** 👆  
+✅ **Autenticación con Biometría** (Proximamente...)👆  
 Accede con **huella dactilar o reconocimiento facial** en dispositivos compatibles.  
 
 ✅ **Gestor de contraseñas inteligente** 📂  
@@ -65,8 +65,8 @@ Para clonar y ejecutar esta aplicación, necesitas tener [Flutter](https://flutt
 
 ### **1️⃣ Clonar el Repositorio**
 ```bash
-git clone https://github.com/brundindev/gestor-passwords.git
-cd gestor-passwords
+git clone https://github.com/brundindev/passwd..git
+cd passwd
 ```
 
 ### ** **
