@@ -59,6 +59,11 @@ Disponible en **Android, iOS, Windows, macOS y Linux**.
 
 ---
 
+## 🎬 Preview
+![test](https://github.com/user-attachments/assets/6e4c0bbf-9ac6-4cb0-b825-695392e15917)
+
+---
+
 ## 🚀 Cómo Usar
 
 Para clonar y ejecutar esta aplicación, necesitas tener [Flutter](https://flutter.dev/) y [Firebase CLI](https://firebase.google.com/docs/cli) instalados en tu equipo.
