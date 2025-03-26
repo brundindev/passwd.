@@ -255,113 +255,133 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Barra de búsqueda
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              ),
-              child: TextField(
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value.toLowerCase();
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Buscar contraseñas',
-                  hintStyle: TextStyle(color: Colors.grey.shade600),
-                  prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 15),
-                ),
-                style: TextStyle(color: Colors.black87),
-              ),
+          // Fondo con GIF animado
+          SizedBox.expand(
+            child: Image.asset(
+              'assets/backgroundblack.gif',
+              fit: BoxFit.cover,
             ),
           ),
           
-          // Selector de carpetas
-          if (_currentIndex == 0) // Solo mostrar en la vista de todas las contraseñas
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-              child: FutureBuilder(
-                future: _getFolders(),
+          // Capa de oscurecimiento para mejorar legibilidad
+          /*Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.5),
+            ),
+          ),*/
+          
+          // Contenido original
+          Column(
+            children: [
+              // Barra de búsqueda
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ]
+                  ),
+                  child: TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase();
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Buscar contraseñas',
+                      hintStyle: TextStyle(color: Colors.grey.shade600),
+                      prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 15),
+                    ),
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                ),
+              ),
+              
+              // Selector de carpetas
+              if (_currentIndex == 0) // Solo mostrar en la vista de todas las contraseñas
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                  child: FutureBuilder(
+                    future: _getFolders(),
         builder: (context, snapshot) {
-                  String folderText = 'Seleccionar carpeta';
-                  
-                  if (_selectedFolderId != null) {
+                      String folderText = 'Seleccionar carpeta';
+                      
+                      if (_selectedFolderId != null) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-                      folderText = 'Cargando carpeta...';
-                    } else if (snapshot.hasData) {
-                      final folders = snapshot.data as List;
-                      for (var folder in folders) {
-                        if (folder.id == _selectedFolderId) {
-                          folderText = 'Carpeta: ${folder.name}';
-                          break;
+                          folderText = 'Cargando carpeta...';
+                        } else if (snapshot.hasData) {
+                          final folders = snapshot.data as List;
+                          for (var folder in folders) {
+                            if (folder.id == _selectedFolderId) {
+                              folderText = 'Carpeta: ${folder.name}';
+                              break;
+                            }
+                          }
+                        } else {
+                          folderText = 'Carpeta seleccionada';
                         }
                       }
-                    } else {
-                      folderText = 'Carpeta seleccionada';
-                    }
-                  }
-                  
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: () {
-                          _showFolderSelectionMenu(context);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.folder_outlined,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  folderText,
-                                  style: TextStyle(
-                                    color: Colors.grey[700],
-                                    fontSize: 16,
+                      
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () {
+                              _showFolderSelectionMenu(context);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.folder_outlined,
+                                    color: Theme.of(context).primaryColor,
                                   ),
-                                ),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      folderText,
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.arrow_drop_down,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ],
                               ),
-                              Icon(
-                                Icons.arrow_drop_down,
-                                color: Colors.grey.shade700,
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  );
-                },
+                      );
+                    },
+                  ),
+                ),
+              
+              // Contenido principal
+              Expanded(
+                child: _buildContent(),
               ),
-            ),
-          
-          // Contenido principal
-          Expanded(
-            child: _buildContent(),
+            ],
           ),
         ],
       ),
@@ -371,25 +391,46 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         child: Icon(Icons.add),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.password),
-            label: 'Contraseñas',
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Texto de copyright encima de la barra de navegación
+          Container(
+            padding: EdgeInsets.only(top: 4, bottom: 4),
+            color: Colors.transparent,
+            child: Center(
+              child: Text(
+                'PASSWD. © 2025 @brundindev.',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.star),
-            label: 'Favoritos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.delete),
-            label: 'Papelera',
+          // Barra de navegación
+          NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.password),
+                label: 'Contraseñas',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.star),
+                label: 'Favoritos',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.delete),
+                label: 'Papelera',
+              ),
+            ],
           ),
         ],
       ),
@@ -2273,7 +2314,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             try {
                               final passwordService = Provider.of<PasswordService>(context, listen: false);
                               
-                              // Si ya está en la carpeta, removerla
+                              // Si ya está en la carpeta, borrarla
                               if (isInFolder) {
                                 final updatedPassword = password.removeFromFolder(folder.id);
                                 await passwordService.updatePassword(updatedPassword);
