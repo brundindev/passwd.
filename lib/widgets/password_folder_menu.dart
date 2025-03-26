@@ -7,9 +7,9 @@ class PasswordFolderMenu extends StatefulWidget {
   final Password password;
   
   const PasswordFolderMenu({
-    Key? key,
+    super.key,
     required this.password,
-  }) : super(key: key);
+  });
 
   @override
   _PasswordFolderMenuState createState() => _PasswordFolderMenuState();

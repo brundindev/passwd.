@@ -5,10 +5,10 @@ class FoldersNavigationButton extends StatelessWidget {
   final bool useBadge;
   
   const FoldersNavigationButton({
-    Key? key,
+    super.key,
     this.showText = true,
     this.useBadge = false,
-  }) : super(key: key);
+  });
   
   @override
   Widget build(BuildContext context) {
@@ -27,7 +27,7 @@ class FoldersNavigationButton extends StatelessWidget {
 }
 
 class FoldersDrawerItem extends StatelessWidget {
-  const FoldersDrawerItem({Key? key}) : super(key: key);
+  const FoldersDrawerItem({super.key});
   
   @override
   Widget build(BuildContext context) {
@@ -45,7 +45,7 @@ class FoldersDrawerItem extends StatelessWidget {
 // Este es un widget de cajón flotante que se puede mostrar en cualquier pantalla
 // para acceder rápidamente a carpetas, favoritos y otros destinos importantes
 class QuickAccessDrawer extends StatelessWidget {
-  const QuickAccessDrawer({Key? key}) : super(key: key);
+  const QuickAccessDrawer({super.key});
   
   @override
   Widget build(BuildContext context) {

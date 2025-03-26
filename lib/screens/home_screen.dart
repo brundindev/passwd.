@@ -1652,7 +1652,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Seleccionar carpeta'),
-          content: Container(
+          content: SizedBox(
             width: double.maxFinite,
             height: 300,
             child: FutureBuilder(
@@ -1778,7 +1778,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               });
                             },
                           );
-                        }).toList(),
+                        }),
                       ],
                     );
                   }
@@ -2062,7 +2062,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               Navigator.pop(context);
                             },
                           );
-                        }).toList(),
+                        }),
                         Divider(),
                         // Opción para crear nueva carpeta
                         ListTile(
@@ -2351,7 +2351,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             }
                           },
                         );
-                      }).toList(),
+                      }),
                     ],
                   ),
                 );

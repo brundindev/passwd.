@@ -6,7 +6,6 @@ import '../services/password_service.dart';
 import '../services/export_import_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/inactivity_detector.dart';
-import 'package:path_provider/path_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

@@ -4,7 +4,7 @@ import '../models/folder.dart';
 import '../services/folder_service.dart';
 
 class FoldersScreen extends StatefulWidget {
-  const FoldersScreen({Key? key}) : super(key: key);
+  const FoldersScreen({super.key});
 
   @override
   _FoldersScreenState createState() => _FoldersScreenState();
@@ -457,9 +457,9 @@ class FolderPasswordsScreen extends StatelessWidget {
   final Folder folder;
   
   const FolderPasswordsScreen({
-    Key? key,
+    super.key,
     required this.folder,
-  }) : super(key: key);
+  });
   
   @override
   Widget build(BuildContext context) {

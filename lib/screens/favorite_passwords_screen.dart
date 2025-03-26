@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
-import 'dart:math';
 import '../models/password.dart';
 import '../services/password_service.dart';
 import '../services/password_generator.dart';

@@ -37,7 +37,7 @@ class WebExtensionService {
         final String rawPath = request.uri.path;
         final String normalizedPath = _normalizePath(rawPath);
         
-        debugPrint('[WebExtension] 📥 Solicitud recibida: ${request.method} ${rawPath} (normalizada: ${normalizedPath}) desde ${request.connectionInfo?.remoteAddress.address}');
+        debugPrint('[WebExtension] 📥 Solicitud recibida: ${request.method} $rawPath (normalizada: $normalizedPath) desde ${request.connectionInfo?.remoteAddress.address}');
         
         try {
           // Configurar CORS para permitir solicitudes de la extensión - esto es crítico
@@ -71,7 +71,7 @@ class WebExtensionService {
           }
           
           // Si no coincide con ninguna ruta, imprimir detalle de lo recibido para debug
-          debugPrint('[WebExtension] ❌ Endpoint no encontrado: "${rawPath}" (normalizada: "${normalizedPath}") (${request.method})');
+          debugPrint('[WebExtension] ❌ Endpoint no encontrado: "$rawPath" (normalizada: "$normalizedPath") (${request.method})');
           debugPrint('[WebExtension] URI completa: ${request.uri.toString()}');
           
           request.response.statusCode = HttpStatus.notFound;
@@ -355,7 +355,7 @@ class WebExtensionService {
     
     // Asegurarse de que comience con /
     if (!normalized.startsWith('/')) {
-      normalized = '/' + normalized;
+      normalized = '/$normalized';
     }
     
     // Eliminar barras duplicadas

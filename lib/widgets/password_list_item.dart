@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../models/password.dart';
 import '../services/totp_service.dart';
-import '../screens/folder_operations.dart';
 
 class PasswordListItem extends StatefulWidget {
   final Password password;
