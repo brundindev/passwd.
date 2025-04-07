@@ -244,4 +244,29 @@ class PasswordService {
       await doc.reference.delete();
     }
   }
+  
+  // Forzar una actualización de las contraseñas desde la base de datos
+  Future<void> refreshPasswords() async {
+    if (userId == null) {
+      throw Exception('Usuario no autenticado');
+    }
+    
+    // Simular una carga para dar feedback visual al usuario
+    await Future.delayed(Duration(milliseconds: 800));
+    
+    // En una implementación real, aquí podrías:
+    // 1. Invalidar cualquier caché local de contraseñas
+    // 2. Sincronizar con un servidor remoto si es necesario
+    // 3. Realizar alguna lógica adicional de sincronización
+    
+    try {
+      // Obtener las contraseñas actualizadas (forzar una nueva consulta)
+      await passwordsCollection.get();
+      print('Contraseñas actualizadas correctamente');
+      return;
+    } catch (e) {
+      print('Error al actualizar contraseñas: $e');
+      throw Exception('Error al sincronizar las contraseñas: $e');
+    }
+  }
 }

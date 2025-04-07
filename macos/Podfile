@@ -1,4 +1,4 @@
-platform :macos, '10.15'
+platform :osx, '10.15'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -28,20 +28,38 @@ flutter_macos_podfile_setup
 
 target 'Runner' do
   use_frameworks!
+  use_modular_headers!
 
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths
   end
-end
 
-post_install do |installer|
-  installer.pods_project.targets.each do |target|
-    flutter_additional_macos_build_settings(target)
-    
-    # Asegúrate de que todos los targets usen macOS 10.15
-    target.build_configurations.each do |config|
-      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
+  # Fix para los errores de Firebase
+  post_install do |installer|
+    installer.pods_project.targets.each do |target|
+      flutter_additional_macos_build_settings(target)
+      
+      target.build_configurations.each do |config|
+        # Fix para los problemas de encabezados de Firebase
+        config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = "NO"
+        
+        # Asegurarse de que todos los targets usen macOS 10.15 (requerido por Firebase)
+        config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
+        
+        # Configuraciones para solucionar problemas de firma
+        config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
+        config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
+        config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+        
+        # Configuraciones adicionales para compatibilidad
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+          '$(inherited)',
+          'COCOAPODS=1',
+          'FBSDK_SWIFT_PACKAGE=1',
+          'FB_SONARKIT_ENABLED=1',
+        ]
+      end
     end
   end
 end
