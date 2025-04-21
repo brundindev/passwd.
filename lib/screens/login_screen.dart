@@ -1,7 +1,15 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../utils/snackbar_utils.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import 'package:email_validator/email_validator.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/services.dart';
+
 import 'home_screen.dart';
+import 'dart:ui';
+import 'dart:math';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,13 +19,684 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _resetPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
-  String? _errorMessage;
-  final bool _obscurePassword = true;
-  bool _showPassword = false;
+  bool _obscureText = true;
+  bool _isDarkMode = true; // Valor predeterminado es modo oscuro
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    
+    return Theme(
+      data: _isDarkMode
+          ? ThemeData.dark().copyWith(
+              textTheme: ThemeData.dark().textTheme.apply(
+                    fontFamily: 'SF Pro',
+                  ),
+              colorScheme: ColorScheme.dark(
+                primary: Colors.blue,
+                secondary: Colors.blueAccent,
+                surface: Colors.grey[900]!,
+              ),
+            )
+          : ThemeData.light().copyWith(
+              textTheme: ThemeData.light().textTheme.apply(
+                    fontFamily: 'SF Pro',
+                  ),
+              colorScheme: ColorScheme.light(
+                primary: Colors.blue,
+                secondary: Colors.blueAccent,
+                surface: Colors.grey[100]!,
+              ),
+            ),
+      child: Scaffold(
+        backgroundColor: _isDarkMode ? Colors.black : Colors.white,
+        body: Stack(
+          children: [
+            // Fondo con GIF y transparencia
+            Positioned.fill(
+              child: Opacity(
+                opacity: _isDarkMode ? 0.7 : 0.3,
+                child: Image.asset(
+                  'assets/background.gif',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            
+            // Filtro de fondo con blur
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              child: Container(
+                color: (_isDarkMode ? Colors.black : Colors.white).withOpacity(0.3),
+              ),
+            ),
+            
+            // Patrón de puntos
+            CustomPaint(
+              painter: DotPatternPainter(
+                color: _isDarkMode ? Colors.white : Colors.black,
+                opacity: _isDarkMode ? 0.15 : 0.07,
+              ),
+              child: Container(),
+            ),
+            
+            // Contenido
+            SafeArea(
+              child: Builder(
+                builder: (context) {
+                  return SingleChildScrollView(
+                    child: Center(
+                      child: SizedBox(
+                        width: size.width > 600 ? 600 : size.width * 0.9,
+                        height: size.height * 0.9,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Botón para volver
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.arrow_back_ios_rounded,
+                                    color: _isDarkMode ? Colors.white : Colors.black,
+                                    size: 20,
+                                  ),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                                
+                                // Toggle para tema claro/oscuro
+                                Row(
+                                  children: [
+                                    Icon(
+                                      _isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                                      color: _isDarkMode ? Colors.white : Colors.black,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 5),
+                                    Switch(
+                                      value: _isDarkMode,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _isDarkMode = value;
+                                        });
+                                      },
+                                      activeColor: Colors.blueAccent,
+                                      inactiveThumbColor: Colors.amber,
+                                      activeTrackColor: Colors.blue.withOpacity(0.5),
+                                      inactiveTrackColor: Colors.orange.withOpacity(0.5),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            
+                            SizedBox(height: 20),
+                            
+                            // Título
+                            Text(
+                              'Iniciar sesión',
+                              style: TextStyle(
+                                fontSize: 30,
+                                fontWeight: FontWeight.bold,
+                                color: _isDarkMode ? Colors.white : Colors.black,
+                              ),
+                            ),
+                            
+                            SizedBox(height: 40),
+                            
+                            Form(
+                              key: _formKey,
+                              child: Column(
+                                children: [
+                                  // Campo de correo electrónico
+                                  _buildTextField(
+                                    controller: _emailController,
+                                    labelText: 'Correo electrónico',
+                                    prefixIcon: Icons.email_outlined,
+                                    validator: (val) {
+                                      if (val == null || val.isEmpty) {
+                                        return 'Por favor, ingresa tu correo electrónico';
+                                      } else if (!_isValidEmail(val)) {
+                                        return 'Ingresa un correo electrónico válido';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  
+                                  SizedBox(height: 16),
+                                  
+                                  // Campo de contraseña
+                                  _buildTextField(
+                                    controller: _passwordController,
+                                    labelText: 'Contraseña',
+                                    prefixIcon: Icons.lock_outline_rounded,
+                                    isPassword: true,
+                                    validator: (val) {
+                                      if (val == null || val.isEmpty) {
+                                        return 'Por favor, ingresa tu contraseña';
+                                      } else if (val.length < 6) {
+                                        return 'La contraseña debe tener al menos 6 caracteres';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  
+                                  SizedBox(height: 20),
+                                  
+                                  // Enlace de olvidó contraseña
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: () {
+                                        // Mostrar diálogo en lugar de navegar
+                                        _showForgotPasswordDialog();
+                                      },
+                                      child: Text(
+                                        '¿Olvidaste tu contraseña?',
+                                        style: TextStyle(
+                                          color: Colors.blue,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  
+                                  SizedBox(height: 30),
+                                  
+                                  // Botón de iniciar sesión
+                                  ElevatedButton(
+                                    onPressed: () => _signIn(context),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      minimumSize: Size(double.infinity, 50),
+                                      elevation: 0,
+                                    ),
+                                    child: Text(
+                                      'Iniciar sesión',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            SizedBox(height: 30),
+                            
+                            // Divisor "O"
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: _isDarkMode 
+                                        ? Colors.white.withOpacity(0.2) 
+                                        : Colors.black.withOpacity(0.1),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    'O',
+                                    style: TextStyle(
+                                      color: _isDarkMode ? Colors.white70 : Colors.black54,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: _isDarkMode 
+                                        ? Colors.white.withOpacity(0.2) 
+                                        : Colors.black.withOpacity(0.1),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            SizedBox(height: 30),
+                            
+                            // Botón de Google
+                            OutlinedButton.icon(
+                              onPressed: () => _signInWithGoogle(),
+                              icon: Image.asset(
+                                'assets/google_logo.png',
+                                height: 24,
+                              ),
+                              label: Text(
+                                'Continuar con Google',
+                                style: TextStyle(
+                                  fontSize: 16, 
+                                  color: _isDarkMode ? Colors.white : Colors.black,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: _isDarkMode 
+                                      ? Colors.white.withOpacity(0.3) 
+                                      : Colors.black.withOpacity(0.2),
+                                  width: 1,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                minimumSize: Size(double.infinity, 50),
+                              ),
+                            ),
+                            
+                            SizedBox(height: 30),
+                            
+                            // Enlace para registrarse
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '¿No tienes una cuenta? ',
+                                  style: TextStyle(
+                                    color: _isDarkMode ? Colors.white70 : Colors.black87,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pushNamed(context, '/register');
+                                  },
+                                  child: Text(
+                                    'Regístrate',
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String labelText,
+    required IconData prefixIcon,
+    bool isPassword = false,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword ? _obscureText : false,
+      validator: validator,
+      style: TextStyle(
+        color: _isDarkMode ? Colors.white : Colors.black,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: TextStyle(
+          color: _isDarkMode ? Colors.white70 : Colors.black54,
+          fontSize: 14,
+        ),
+        prefixIcon: Icon(
+          prefixIcon,
+          color: _isDarkMode ? Colors.white70 : Colors.black54,
+          size: 20,
+        ),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  _obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: _isDarkMode ? Colors.white70 : Colors.black54,
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscureText = !_obscureText;
+                  });
+                },
+              )
+            : null,
+        filled: true,
+        fillColor: _isDarkMode 
+            ? Colors.white.withOpacity(0.1) 
+            : Colors.black.withOpacity(0.05),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: _isDarkMode 
+                ? Colors.white.withOpacity(0.2) 
+                : Colors.black.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.blue,
+            width: 1.5,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.red.withOpacity(0.8),
+            width: 1,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.red,
+            width: 1.5,
+          ),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      ),
+    );
+  }
+  
+  // Validación simple de email
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  void _signIn(BuildContext context) async {
+    if (_formKey.currentState!.validate()) {
+      // Mostrar indicador de carga
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        },
+      );
+
+      try {
+        final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+
+        // Cerrar el diálogo de carga
+        Navigator.of(context).pop();
+
+        if (userCredential.user != null) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => HomeScreen()),
+            (route) => false,
+          );
+        }
+      } on FirebaseAuthException catch (e) {
+        // Cerrar el diálogo de carga
+        Navigator.of(context).pop();
+        
+        String errorMessage = 'Error de autenticación';
+        
+        if (e.code == 'user-not-found') {
+          errorMessage = 'No existe ningún usuario con este correo electrónico';
+        } else if (e.code == 'wrong-password') {
+          errorMessage = 'Contraseña incorrecta';
+        } else if (e.code == 'invalid-email') {
+          errorMessage = 'El formato del correo electrónico no es válido';
+        } else if (e.code == 'user-disabled') {
+          errorMessage = 'Este usuario ha sido deshabilitado';
+        }
+        
+        showSnackBar(context, errorMessage);
+    } catch (e) {
+        // Cerrar el diálogo de carga
+        Navigator.of(context).pop();
+        showSnackBar(context, 'Error: ${e.toString()}');
+      }
+    }
+  }
+
+  // Método para mostrar el diálogo de recuperación de contraseña
+  void _showForgotPasswordDialog() {
+    final TextEditingController emailController = TextEditingController();
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          title: Text(
+            'Restablecer contraseña',
+            style: TextStyle(
+              color: _isDarkMode ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+          child: Form(
+            key: formKey,
+            child: Column(
+                mainAxisSize: MainAxisSize.min,
+              children: [
+                  Text(
+                    'Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.',
+                    style: TextStyle(
+                      color: _isDarkMode ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  TextFormField(
+                    controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Correo electrónico',
+                      labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white70 : Colors.black87,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.email_outlined,
+                        color: _isDarkMode ? Colors.white70 : Colors.black87,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: _isDarkMode ? Colors.white24 : Colors.black26,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: _isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      filled: true,
+                      fillColor: _isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                    ),
+                    style: TextStyle(
+                      color: _isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                        return 'Por favor ingresa tu correo';
+                      }
+                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                        return 'Ingresa un correo electrónico válido';
+                    }
+                    return null;
+                  },
+                ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(
+                  color: _isDarkMode ? Colors.white70 : Colors.black87,
+                ),
+              ),
+            ),
+                          ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(context).pop();
+                  _resetPassword(emailController.text);
+                }
+              },
+                            style: ElevatedButton.styleFrom(
+                backgroundColor: _isDarkMode ? Colors.blueAccent : Colors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text('Enviar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  // Método para enviar el correo de restablecimiento de contraseña
+  Future<void> _resetPassword(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      showSnackBar(
+        context,
+        'Hemos enviado un enlace a tu correo para restablecer tu contraseña.'
+      );
+    } catch (e) {
+      showSnackBar(
+        context,
+        'Error al enviar el correo: ${e.toString()}'
+      );
+    }
+  }
+
+  // Método para iniciar sesión con Google
+  Future<void> _signInWithGoogle() async {
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          content: Container(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Conectando con Google...',
+                  style: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Iniciar el flujo de autenticación de Google
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      // Si el usuario cancela el inicio de sesión
+      if (googleUser == null) {
+        Navigator.of(context).pop(); // Cerrar diálogo de carga
+        return;
+      }
+
+      // Obtener detalles de autenticación de la solicitud
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Crear una nueva credencial
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Iniciar sesión con Firebase usando la credencial
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      
+      // Cerrar el diálogo de carga
+      Navigator.of(context).pop();
+      
+      // Navegar a la pantalla principal
+      Navigator.pushReplacementNamed(context, '/home');
+    } catch (e) {
+      // Cerrar el diálogo de carga
+      Navigator.of(context).pop();
+      
+      String errorMessage = 'Error al iniciar sesión con Google';
+      
+      if (e is FirebaseAuthException) {
+        if (e.code == 'account-exists-with-different-credential') {
+          errorMessage = 'Ya existe una cuenta con este correo electrónico pero con diferente método de inicio de sesión';
+        } else if (e.code == 'invalid-credential') {
+          errorMessage = 'Error en las credenciales de acceso';
+        } else if (e.code == 'operation-not-allowed') {
+          errorMessage = 'El inicio de sesión con Google no está habilitado';
+        } else if (e.code == 'user-disabled') {
+          errorMessage = 'Esta cuenta ha sido deshabilitada';
+        } else if (e.code == 'user-not-found') {
+          errorMessage = 'No se encontró ninguna cuenta con este correo electrónico';
+        } else if (e.code == 'network-request-failed') {
+          errorMessage = 'Error de conexión a internet. Verifica tu conexión e intenta de nuevo';
+        }
+      } else if (e is PlatformException) {
+        if (e.code == 'network_error') {
+          errorMessage = 'Error de conexión a internet. Verifica tu conexión e intenta de nuevo';
+        }
+      }
+      
+      showSnackBar(context, errorMessage);
+    }
+  }
 
   @override
   void dispose() {
@@ -25,751 +704,51 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     super.dispose();
   }
-
-  Future<void> _signInWithEmailAndPassword() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-      
-      // Mostrar diálogo de carga
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            elevation: 16,
-            child: Container(
-              padding: const EdgeInsets.all(24.0),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: 50, 
-                    width: 50, 
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-                      strokeWidth: 5,
-                    )
-                  ),
-                  SizedBox(height: 24),
-                  Text(
-                    'Iniciando sesión...',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Verificando credenciales',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-
-      try {
-        print("Iniciando proceso de login con email...");
-        final authService = Provider.of<AuthService>(context, listen: false);
-        
-        final result = await authService.signInWithEmailAndPassword(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
-        
-        print("Login exitoso. UID: ${result.user?.uid}");
-        
-        // Verificar si el correo está verificado
-        final user = result.user;
-        if (user != null && !user.emailVerified) {
-          // Si el correo no está verificado, enviar un nuevo correo y mostrar mensaje
-          try {
-            await user.sendEmailVerification();
-            print("Reenviado correo de verificación a: ${user.email}");
-          } catch (verificationError) {
-            print("Error al reenviar correo de verificación: $verificationError");
-            // Continuamos aunque haya error
-          }
-          
-          // Cerrar sesión ya que el correo no está verificado
-          await authService.signOut();
-          
-          // Esperar un poco para hacer visible la carga
-          await Future.delayed(Duration(milliseconds: 800));
-          
-          if (mounted) {
-            // Cerrar el diálogo de carga
-            Navigator.of(context).pop();
-            
-            setState(() {
-              _isLoading = false;
-              _errorMessage = "Por favor, verifica tu correo electrónico antes de iniciar sesión. Hemos enviado un nuevo correo de verificación.";
-            });
-          }
-          return;
-        }
-        
-        // Esperar un poco para hacer visible la carga
-        await Future.delayed(Duration(milliseconds: 800));
-        
-        if (mounted) {
-          // Cerrar el diálogo de carga
-          Navigator.of(context).pop();
-          
-          setState(() {
-            _isLoading = false;
-          });
-          
-          print("Navegando directamente a HomeScreen después del login...");
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => HomeScreen()),
-            (route) => false,
-          );
-        }
-      } catch (e) {
-        print("Error durante el login: $e");
-        
-        // Cerrar el diálogo de carga
-        if (mounted) {
-          Navigator.of(context).pop();
-          
-          setState(() {
-            final authService = Provider.of<AuthService>(context, listen: false);
-            _errorMessage = authService.handleAuthError(e);
-            _isLoading = false;
-          });
-        }
-      }
-    }
-  }
-
-  Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    
-    // Mostrar diálogo de carga
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 16,
-          child: Container(
-            padding: const EdgeInsets.all(24.0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: 50, 
-                  width: 50, 
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-                    strokeWidth: 5,
-                  )
-                ),
-                SizedBox(height: 24),
-                Text(
-                  'Iniciando sesión con Google...',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Conectando con Google',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-    
-    try {
-      print("Iniciando proceso de login con Google...");
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final result = await authService.signInWithGoogle().timeout(
-        Duration(seconds: 30),
-        onTimeout: () {
-          throw Exception(
-            'La autenticación con Google está tomando demasiado tiempo. '
-            'Por favor, intenta iniciar sesión usando email y contraseña.'
-          );
-        },
-      );
-      
-      print("Login con Google exitoso. UID: ${result.user?.uid}");
-      
-      // Google ya verifica los correos electrónicos, no es necesario comprobar ni enviar verificación
-      
-      // Esperar un poco para hacer visible la carga
-      await Future.delayed(Duration(milliseconds: 800));
-      
-      if (mounted) {
-        // Cerrar el diálogo de carga
-        Navigator.of(context).pop();
-        
-        setState(() {
-          _isLoading = false;
-        });
-        
-        print("Navegando directamente a HomeScreen después del login con Google...");
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => HomeScreen()),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      print("Error durante el login con Google: $e");
-      
-      // Cerrar el diálogo de carga
-      if (mounted) {
-        Navigator.of(context).pop();
-        
-        setState(() {
-          _isLoading = false;
-          
-          if (e.toString().contains("popup has been closed by the user")) {
-            _errorMessage = "Inicio de sesión con Google cancelado";
-          } else if (e.toString().contains("popup") || 
-                     e.toString().contains("browser") ||
-                     e.toString().contains("ventana")) {
-            _errorMessage = "No se pudo abrir la ventana de inicio de sesión de Google. " "Por favor, verifica si tienes un bloqueador de ventanas emergentes activo.";
-          } else {
-            final authService = Provider.of<AuthService>(context, listen: false);
-            _errorMessage = authService.handleAuthError(e);
-          }
-        });
-      }
-    }
-  }
-
-  // Método para mostrar el diálogo de recuperación de contraseña
-  void _showForgotPasswordDialog() {
-    // Controlador para el campo de correo electrónico
-    final TextEditingController emailController = TextEditingController();
-    // Variable para controlar el estado de carga
-    bool isLoading = false;
-    // Variable para mostrar mensajes de error
-    String? errorMessage;
-    // Variable para mostrar mensaje de éxito
-    bool isSuccess = false;
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false, // El usuario debe interactuar con el diálogo
-      builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Text(
-                'Restablecer contraseña',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Ingresa tu correo electrónico para recibir un enlace de restablecimiento de contraseña.',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                    ),
-                    SizedBox(height: 16),
-                    if (errorMessage != null)
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.shade300),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.error_outline, color: Colors.red, size: 16),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                errorMessage!,
-                                style: TextStyle(color: Colors.red, fontSize: 12),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (errorMessage != null) SizedBox(height: 16),
-                    if (isSuccess)
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.green.shade300),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.check_circle_outline, color: Colors.green, size: 16),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '¡Correo enviado! Revisa tu bandeja de entrada y sigue las instrucciones.',
-                                style: TextStyle(color: Colors.green, fontSize: 12),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (isSuccess) SizedBox(height: 16),
-                    TextField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.normal),
-                      decoration: InputDecoration(
-                        labelText: 'Correo electrónico',
-                        hintText: 'ejemplo@dominio.com',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon: Icon(Icons.email),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                      ),
-                      enabled: !isSuccess, // Deshabilitar si ya se envió el correo
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: Text('Cancelar'),
-                ),
-                if (!isSuccess)
-                  ElevatedButton(
-                    onPressed: isLoading 
-                      ? null 
-                      : () async {
-                        // Validar email
-                        final email = emailController.text.trim();
-                        if (email.isEmpty) {
-                          setState(() {
-                            errorMessage = "Por favor, ingresa tu correo electrónico";
-                          });
-                          return;
-                        }
-                        
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
-                          setState(() {
-                            errorMessage = "Por favor, ingresa un correo electrónico válido";
-                          });
-                          return;
-                        }
-                        
-                        // Mostrar carga
-                        setState(() {
-                          isLoading = true;
-                          errorMessage = null;
-                        });
-                        
-                        try {
-                          // Enviar correo de restablecimiento
-                          final authService = Provider.of<AuthService>(context, listen: false);
-                          await authService.sendPasswordResetEmail(email);
-                          
-                          // Mostrar éxito
-                          setState(() {
-                            isLoading = false;
-                            isSuccess = true;
-                          });
-                          
-                          // Cerrar diálogo después de 3 segundos si todo va bien
-                          Future.delayed(Duration(seconds: 3), () {
-                            if (mounted && Navigator.of(dialogContext, rootNavigator: true).canPop()) {
-                              Navigator.of(dialogContext).pop();
-                            }
-                          });
-                        } catch (e) {
-                          // Manejar error
-                          setState(() {
-                            isLoading = false;
-                            final authService = Provider.of<AuthService>(context, listen: false);
-                            errorMessage = authService.handleAuthError(e);
-                          });
-                        }
-                      },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text('Enviar'),
-                  ),
-                if (isSuccess)
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text('Entendido'),
-                  ),
-              ],
-            );
-          }
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Fondo con GIF animado
-          SizedBox.expand(
-            child: Image.asset(
-              'assets/background.gif',
-              fit: BoxFit.cover,
-            ),
-          ),
-          
-          // Capa de oscurecimiento para mejorar legibilidad
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
-            ),
-          ),
-          
-          // Patrón de puntos decorativos
-          CustomPaint(
-            size: Size(MediaQuery.of(context).size.width, MediaQuery.of(context).size.height),
-            painter: DotPatternPainter(),
-          ),
-          
-          // Contenido principal
-          SafeArea(
-            child: Column(
-              children: [
-                // Botón de volver atrás
-                Padding(
-                  padding: const EdgeInsets.only(left: 8.0, top: 8.0),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ),
-                ),
-                
-                // Contenido del formulario
-                Expanded(
-                  child: Center(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Icono de la aplicación
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.white.withOpacity(0.2),
-                                      blurRadius: 20,
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.lock,
-                                  size: 40,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 24),
-                              
-                              // Título y subtítulo
-                              Text(
-                                'Iniciar Sesión',
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Accede a tus contraseñas seguras',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white.withOpacity(0.7),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 32),
-
-                              // Mensaje de error
-                              if (_errorMessage != null)
-                                Container(
-                                  padding: EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.red.shade300),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.error_outline, color: Colors.red),
-                                      SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          _errorMessage!,
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              if (_errorMessage != null) SizedBox(height: 16),
-
-                              // Formulario de inicio de sesión
-                              TextFormField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                style: TextStyle(color: Colors.black87),
-                                decoration: InputDecoration(
-                                  labelText: 'Correo electrónico',
-                                  prefixIcon: Icon(Icons.email, color: Colors.grey[800]),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Por favor ingresa tu email';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              SizedBox(height: 16),
-                              TextFormField(
-                                controller: _passwordController,
-                                obscureText: !_showPassword,
-                                style: TextStyle(color: Colors.black87),
-                                decoration: InputDecoration(
-                                  labelText: 'Contraseña',
-                                  prefixIcon: Icon(Icons.lock, color: Colors.grey[800]),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _showPassword ? Icons.visibility_off : Icons.visibility,
-                                      color: Theme.of(context).primaryColor,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _showPassword = !_showPassword;
-                                      });
-                                    },
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Por favor ingresa tu contraseña';
-                                  }
-                                  return null;
-                                },
-                                onFieldSubmitted: (_) => _signInWithEmailAndPassword(),
-                              ),
-                              SizedBox(height: 8),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: () {
-                                    // Mostrar diálogo para ingresar correo
-                                    _showForgotPasswordDialog();
-                                  },
-                                  child: Text(
-                                    'Olvidé mi contraseña',
-                                    style: TextStyle(color: Colors.white70),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 24),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _signInWithEmailAndPassword,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.black,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 3,
-                                  ),
-                                  child: _isLoading
-                                      ? CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.black))
-                                      : Text('Iniciar Sesión', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  Expanded(child: Divider(color: Colors.white30)),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                                    child: Text('O continuar con', style: TextStyle(color: Colors.white70)),
-                                  ),
-                                  Expanded(child: Divider(color: Colors.white30)),
-                                ],
-                              ),
-                              SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: OutlinedButton.icon(
-                                  icon: Image.asset('assets/google_logo.png', height: 24),
-                                  label: Text('Google', style: TextStyle(fontSize: 16, color: Colors.white)),
-                                  onPressed: _isLoading 
-                                    ? null 
-                                    : () => _signInWithGoogle(),
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(color: Colors.white, width: 1),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 32),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    '¿No tienes cuenta?',
-                                    style: TextStyle(color: Colors.white70),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pushReplacementNamed(context, '/register');
-                                    },
-                                    child: Text(
-                                      'Regístrate',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-// Pintor personalizado para crear un patrón de puntos
 class DotPatternPainter extends CustomPainter {
+  final Color color;
+  final double opacity;
+  
+  DotPatternPainter({
+    this.color = Colors.white,
+    this.opacity = 0.15,
+  });
+  
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = color.withOpacity(opacity)
       ..strokeWidth = 1
       ..strokeCap = StrokeCap.round;
+      
+    final spacing = 25.0; // Espacio entre puntos
+    final dotSize = 1.0; // Tamaño de los puntos
     
-    const spacing = 30.0; // Espacio entre puntos
-    final dotSize = 2.0; // Tamaño de los puntos
+    // Pequeña variación para que los puntos no estén perfectamente alineados
+    final random = Random(42); // Semilla fija para consistencia
     
     for (double x = 0; x < size.width; x += spacing) {
       for (double y = 0; y < size.height; y += spacing) {
-        // Añadir algo de variación en la opacidad para crear un efecto más interesante
-        paint.color = Colors.white.withOpacity(0.1 + (x * y) % 0.3);
-        canvas.drawCircle(Offset(x, y), dotSize, paint);
+        // Añadir una ligera variación a la posición
+        final offsetX = random.nextDouble() * 5 - 2.5;
+        final offsetY = random.nextDouble() * 5 - 2.5;
+        
+        // Variación en la opacidad para crear un efecto más interesante
+        final variableOpacity = opacity * (0.5 + random.nextDouble() * 0.5);
+        paint.color = color.withOpacity(variableOpacity);
+        
+        canvas.drawCircle(
+          Offset(x + offsetX, y + offsetY), 
+          dotSize * (0.8 + random.nextDouble() * 0.4), // Pequeña variación en el tamaño
+          paint
+        );
       }
     }
   }
-
+  
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(DotPatternPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.opacity != opacity;
+  }
 }

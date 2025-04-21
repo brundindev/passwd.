@@ -10,7 +10,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'welcome_screen.dart';
 import '../widgets/password_list_item.dart';
 import 'settings_screen.dart';
-import 'folders_screen.dart';
 import '../services/folder_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -115,61 +114,117 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
         backgroundColor: isDarkMode ? Colors.black : Color(0xFFF2F2F7),
       appBar: AppBar(
-          title: Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 22,
-              color: isDarkMode ? Colors.white : Colors.black,
+          toolbarHeight: 68,
+          backgroundColor: isDarkMode ? Colors.black : Colors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          titleSpacing: 0,
+          leading: Builder(
+            builder: (context) => MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: IconButton(
+                  icon: Container(
+                    padding: EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.menu_rounded,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      size: 22,
+                    ),
+                  ),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                  tooltip: 'Menú',
+                ),
+              ),
             ),
           ),
-          backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          iconTheme: IconThemeData(
-            color: isDarkMode ? Colors.white : Colors.black87,
+          title: Row(
+            children: [
+              SizedBox(width: 4),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+            ],
           ),
-          elevation: 0,
-          automaticallyImplyLeading: true,
         actions: [
             // Botón de recarga de contraseñas
-          IconButton(
-              icon: Icon(
-                Icons.refresh_rounded,
-                color: isDarkMode ? Colors.white : Colors.black87,
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 6),
+                child: IconButton(
+                  icon: Container(
+                    padding: EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.refresh_rounded,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      size: 22,
+                    ),
+                  ),
+                  tooltip: 'Recargar contraseñas',
+                  onPressed: () {
+                    _refreshPasswords();
+                  },
+                ),
               ),
-              tooltip: 'Recargar contraseñas',
-              onPressed: () {
-                _refreshPasswords();
-              },
             ),
+            
             // Selector de tema (claro/oscuro)
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Row(
-                children: [
-                  Icon(
-                    isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                    size: 18,
-                  ),
-                  SizedBox(width: 6),
-                  // Switch para cambiar de modo claro a oscuro
-                  Switch.adaptive(
-                    value: isDarkMode,
-                    onChanged: (value) {
-                      setState(() {
-                        _isDarkMode = value;
-                      });
-                    },
-                    activeColor: Colors.blue,
-                    activeTrackColor: Colors.blue.withOpacity(0.5),
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: Colors.grey.shade300,
-                  ),
-                ],
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Container(
+                margin: EdgeInsets.only(right: 10),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                      color: isDarkMode ? Colors.yellow.shade600 : Colors.amber.shade600,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    // Switch para cambiar de modo claro a oscuro
+                    Transform.scale(
+                      scale: 0.8,
+                      child: Switch.adaptive(
+                        value: isDarkMode,
+                        onChanged: (value) {
+                          setState(() {
+                            _isDarkMode = value;
+                          });
+                        },
+                        activeColor: Colors.blue,
+                        activeTrackColor: Colors.blue.withOpacity(0.5),
+                        inactiveThumbColor: Colors.white,
+                        inactiveTrackColor: Colors.grey.shade300,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            
+            // Perfil de usuario
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
               child: GestureDetector(
                 onTap: () {
                   showModalBottomSheet(
@@ -180,15 +235,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
                 child: Container(
+                  margin: EdgeInsets.only(right: 16),
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.grey.shade800.withOpacity(0.5) : Colors.grey.shade200,
+                    color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     children: [
                       CircleAvatar(
-                        radius: 14,
+                        radius: 15,
                         backgroundColor: currentUser.photoURL != null 
                             ? Colors.transparent 
                             : Colors.blue.shade400,
@@ -211,11 +271,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         currentUser.displayName?.split(" ")[0] ?? 
                         (currentUser.email?.split("@")[0] ?? 'Usuario'),
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                           color: isDarkMode ? Colors.white : Colors.black87,
                         ),
                       ),
+                      SizedBox(width: 4),
                       Icon(
                         Icons.keyboard_arrow_down_rounded,
                         color: isDarkMode ? Colors.white70 : Colors.black54,
@@ -228,7 +289,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        drawer: Container(
+        drawer: SizedBox(
           width: MediaQuery.of(context).size.width * 0.28, // Reducir ancho a aproximadamente 1/4 de la pantalla
           child: Drawer(
             backgroundColor: Colors.transparent,
@@ -456,16 +517,51 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         body: Stack(
           children: [
-            // Fondo con GIF con opacidad reducida
+            // Fondo con efectos visuales modernos estilo Apple
             Positioned.fill(
-              child: Opacity(
-                opacity: isDarkMode ? 0.15 : 0.08,
-                child: Image.asset(
-                  'assets/backgroundblack.gif',
-                  fit: BoxFit.cover,
-                ),
-              ),
+              child: isDarkMode
+                ? Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF121212),
+                          Color(0xFF1E1E1E),
+                          Color(0xFF101010),
+                        ],
+                      ),
+                    ),
+                    child: CustomPaint(
+                      painter: BackgroundPatternPainter(
+                        color: Colors.blue.withOpacity(0.08),
+                        patternSize: 20,
+                        strokeWidth: 0.5,
+                      ),
+                    ),
+                  )
+                : Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFFF5F5F7),
+                          Color(0xFFEBEBF0),
+                          Color(0xFFF2F2F7),
+                        ],
+                      ),
+                    ),
+                    child: CustomPaint(
+                      painter: BackgroundPatternPainter(
+                        color: Colors.blue.withOpacity(0.05),
+                        patternSize: 20,
+                        strokeWidth: 0.5,
+                      ),
+                    ),
+                  ),
             ),
+            
             // Contenido principal
             _buildMainContent(currentUser),
           ],
@@ -481,54 +577,53 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             )
           : null,
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade300,
-                    width: 0.5,
-                  ),
-                ),
-                color: isDarkMode ? Colors.black : Colors.white,
-              ),
-              child: BottomNavigationBar(
-                currentIndex: _currentIndex,
-                onTap: (index) {
+        bottomNavigationBar: Container(
+          height: 80,
+          color: Colors.transparent, // Completamente transparente
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNavItem(
+                icon: Icons.lock_outlined, 
+                activeIcon: Icons.lock, 
+                label: 'Contraseñas',
+                isSelected: _currentIndex == 0,
+                color: Colors.blue,
+                onTap: () {
                   setState(() {
-                    _currentIndex = index;
-                    _selectedFolderId = null; // Resetear carpeta seleccionada al cambiar de pestaña
+                    _currentIndex = 0;
+                    _selectedFolderId = null;
                   });
                 },
-                backgroundColor: isDarkMode ? Colors.black : Colors.white,
-                selectedItemColor: Colors.blue,
-                unselectedItemColor: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade600,
-                selectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 13),
-                elevation: 0,
-                type: BottomNavigationBarType.fixed,
-                items: [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.lock_outlined),
-                    activeIcon: Icon(Icons.lock),
-                    label: 'Contraseñas',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.star_border_outlined),
-                    activeIcon: Icon(Icons.star),
-                    label: 'Favoritos',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.delete_outline),
-                    activeIcon: Icon(Icons.delete),
-                    label: 'Papelera',
-                  ),
-                ],
               ),
-            ),
-          ],
+              _buildNavItem(
+                icon: Icons.star_border_rounded, 
+                activeIcon: Icons.star_rounded, 
+                label: 'Favoritos',
+                isSelected: _currentIndex == 1,
+                color: Colors.amber,
+                onTap: () {
+                  setState(() {
+                    _currentIndex = 1;
+                    _selectedFolderId = null;
+                  });
+                },
+              ),
+              _buildNavItem(
+                icon: Icons.delete_outline_rounded, 
+                activeIcon: Icons.delete_rounded, 
+                label: 'Papelera',
+                isSelected: _currentIndex == 2,
+                color: Colors.red,
+                onTap: () {
+                  setState(() {
+                    _currentIndex = 2;
+                    _selectedFolderId = null;
+                  });
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -650,7 +745,7 @@ class _HomeScreenState extends State<HomeScreen> {
               AnimatedSize(
                 duration: Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
-                child: Container(
+                child: SizedBox(
                   width: isSelected ? null : 0,
                   child: isSelected
                     ? Text(
@@ -1157,7 +1252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           elevation: 0,
                         ),
                       ),
-                    ),
+                  ),
                 ],
               ),
               ),
@@ -1480,51 +1575,33 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Método para actualizar una contraseña existente
-  void _updatePassword(Password updatedPassword) {
-    final User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
-    
+  void _updatePassword(String passwordId, String sitio, String usuario, String password, bool isFavorite) {
     try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+      
       // Actualizar en Firebase
       FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('passwords')
-          .doc(updatedPassword.id)
-          .update({
-        'sitio': updatedPassword.sitio,
-        'usuario': updatedPassword.usuario,
-        'password': updatedPassword.password,
-        'ultimaModificacion': DateTime.now(),
-        'isFavorite': updatedPassword.isFavorite,
-        'folderIds': updatedPassword.folderIds,
-      });
+        .collection('usuarios')
+        .doc(currentUser.uid)
+        .collection('pass')
+        .doc(passwordId)
+        .update({
+          'sitio': sitio,
+          'usuario': usuario,
+          'password': password,
+          'ultimaModificacion': DateTime.now(),
+          'isFavorite': isFavorite,
+        });
+      
+      // Refrescar contraseñas
+      _refreshPasswords();
       
       // Mostrar mensaje de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Contraseña actualizada correctamente'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      
-      // Refrescar passwords
-      _refreshPasswords();
+      _showNotification('Contraseña actualizada correctamente');
     } catch (e) {
       print('Error al actualizar contraseña: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al actualizar la contraseña'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showNotification('Error al actualizar la contraseña', isError: true);
     }
   }
   
@@ -1536,9 +1613,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // Generar un ID único
       final String passwordId = FirebaseFirestore.instance
-          .collection('users')
+          .collection('usuarios')
           .doc(currentUser.uid)
-          .collection('passwords')
+          .collection('pass')
           .doc()
           .id;
       
@@ -1552,56 +1629,39 @@ class _HomeScreenState extends State<HomeScreen> {
         'fechaCreacion': now,
         'ultimaModificacion': now,
         'isFavorite': false,
-        'isDeleted': false,
+        'isInTrash': false,
         'folderIds': <String>[],
       };
       
       // Guardar en Firebase
       FirebaseFirestore.instance
-          .collection('users')
+          .collection('usuarios')
           .doc(currentUser.uid)
-          .collection('passwords')
+          .collection('pass')
           .doc(passwordId)
           .set(passwordData);
       
       // Mostrar mensaje de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Contraseña guardada correctamente'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showNotification('Contraseña guardada correctamente');
       
       // Refrescar passwords
       _refreshPasswords();
     } catch (e) {
       print('Error al guardar contraseña: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar la contraseña'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showNotification('Error al guardar la contraseña', isError: true);
     }
   }
   
   void _editPassword(Password password) {
-    final TextEditingController _sitioController = TextEditingController(text: password.sitio);
-    final TextEditingController _usuarioController = TextEditingController(text: password.usuario);
-    final TextEditingController _passwordController = TextEditingController(text: password.password);
+    final TextEditingController sitioController = TextEditingController(text: password.sitio);
+    final TextEditingController usuarioController = TextEditingController(text: password.usuario);
+    final TextEditingController passwordController = TextEditingController(text: password.password);
     
-    final _formKey = GlobalKey<FormState>();
-    bool _showPassword = false;
-    String? _errorMessage;
+    final formKey = GlobalKey<FormState>();
+    bool showPassword = false;
+    String? errorMessage;
     
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isDarkMode = _isDarkMode;
     
     showModalBottomSheet(
       context: context,
@@ -1632,7 +1692,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Form(
-                    key: _formKey,
+                    key: formKey,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1693,39 +1753,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 24),
                         
-                        if (_errorMessage != null)
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(12),
-                            margin: EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.red.shade200,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  color: Colors.red,
-                                  size: 20,
-                                ),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _errorMessage!,
-                                    style: TextStyle(
-                                      color: Colors.red.shade800,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        
                         // Campo de Sitio
                         Text(
                           'Sitio web',
@@ -1736,64 +1763,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              if (!isDarkMode)
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                            ],
-                          ),
-                          child: TextFormField(
-                            controller: _sitioController,
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            cursorColor: isDarkMode ? Colors.white : Colors.blue,
-                            cursorWidth: 1.2,
-                            decoration: InputDecoration(
-                              contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                              hintText: 'Ingresa el sitio web',
-                              hintStyle: TextStyle(
-                                color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade500,
-                                fontWeight: FontWeight.normal,
-                              ),
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.only(left: 12, right: 8),
-                                child: Icon(
-                                  Icons.web_rounded,
-                                  color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
-                                  size: 22,
-                                ),
-                              ),
-                              border: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              errorBorder: InputBorder.none,
-                              disabledBorder: InputBorder.none,
-                              errorStyle: TextStyle(
-                                color: Colors.red.shade400,
-                                fontSize: 12,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Por favor ingresa un sitio web';
-                              }
-                              return null;
-                            },
-                          ),
+                        _buildTextField(
+                          controller: sitioController,
+                          isDarkMode: isDarkMode,
+                          prefixIcon: Icons.web_rounded,
+                          hintText: 'Ingresa el sitio web',
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Por favor ingresa un sitio web';
+                            }
+                            return null;
+                          },
                         ),
                         SizedBox(height: 16),
                         
@@ -1807,148 +1787,115 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              if (!isDarkMode)
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                            ],
-                          ),
-                          child: TextFormField(
-                            controller: _usuarioController,
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            cursorColor: isDarkMode ? Colors.white : Colors.blue,
-                            cursorWidth: 1.2,
-                            decoration: InputDecoration(
-                              contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                              hintText: 'Ingresa el nombre de usuario',
-                              hintStyle: TextStyle(
-                                color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade500,
-                                fontWeight: FontWeight.normal,
-                              ),
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.only(left: 12, right: 8),
-                                child: Icon(
-                                  Icons.person_rounded,
-                                  color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
-                                  size: 22,
-                                ),
-                              ),
-                              border: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              errorBorder: InputBorder.none,
-                              disabledBorder: InputBorder.none,
-                              errorStyle: TextStyle(
-                                color: Colors.red.shade400,
-                                fontSize: 12,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Por favor ingresa un nombre de usuario';
-                              }
-                              return null;
-                            },
-                          ),
+                        _buildTextField(
+                          controller: usuarioController,
+                          isDarkMode: isDarkMode,
+                          prefixIcon: Icons.person_rounded,
+                          hintText: 'Ingresa el nombre de usuario',
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Por favor ingresa un nombre de usuario';
+                            }
+                            return null;
+                          },
                         ),
                         SizedBox(height: 16),
                         
                         // Campo de Contraseña
-                        Text(
-                          'Contraseña',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: isDarkMode ? Colors.white : Colors.black87,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Contraseña',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: isDarkMode ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            // Botón para generar contraseña
+                            GestureDetector(
+                              onTap: () {
+                                String generatedPassword = _generateRandomPassword();
+                                setState(() {
+                                  passwordController.text = generatedPassword;
+                                  showPassword = true;
+                                });
+                                
+                                // Mostrar un pequeño mensaje de confirmación
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Se ha generado una contraseña segura'),
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: Duration(seconds: 2),
+                                    action: SnackBarAction(
+                                      label: 'OK',
+                                      onPressed: () {},
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.blue.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.auto_fix_high_rounded,
+                                      color: Colors.blue,
+                    size: 16,
+                  ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Generar',
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              if (!isDarkMode)
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                            ],
-                          ),
-                          child: TextFormField(
-                            controller: _passwordController,
-                            obscureText: !_showPassword,
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            cursorColor: isDarkMode ? Colors.white : Colors.blue,
-                            cursorWidth: 1.2,
-                            decoration: InputDecoration(
-                              contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                              hintText: 'Ingresa la contraseña',
-                              hintStyle: TextStyle(
-                                color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade500,
-                                fontWeight: FontWeight.normal,
-                              ),
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.only(left: 12, right: 8),
-                                child: Icon(
-                                  Icons.lock_rounded,
-                                  color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
-                                  size: 22,
-                                ),
-                              ),
-                              suffixIcon: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _showPassword = !_showPassword;
-                                  });
-                                },
-                                child: Icon(
-                                  _showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                                  color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
-                                  size: 22,
-                                ),
-                              ),
-                              border: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              errorBorder: InputBorder.none,
-                              disabledBorder: InputBorder.none,
-                              errorStyle: TextStyle(
-                                color: Colors.red.shade400,
-                                fontSize: 12,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Por favor ingresa una contraseña';
-                              }
-                              return null;
+                        _buildTextField(
+                          controller: passwordController,
+                          isDarkMode: isDarkMode,
+                          prefixIcon: Icons.lock_rounded,
+                          hintText: 'Ingresa la contraseña',
+                          obscureText: !showPassword,
+                          suffix: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                showPassword = !showPassword;
+                              });
                             },
+                            child: Icon(
+                              showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                              color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                              size: 22,
+                            ),
                           ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Por favor ingresa una contraseña';
+                            }
+                            return null;
+                          },
                         ),
                         SizedBox(height: 24),
                         
@@ -1974,35 +1921,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             SizedBox(width: 12),
                             ElevatedButton(
-                              onPressed: () {
-                                if (_formKey.currentState!.validate()) {
-                                  // Actualizar directamente en Firebase
-                                  FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(FirebaseAuth.instance.currentUser!.uid)
-                                    .collection('passwords')
-                                    .doc(password.id)
-                                    .update({
-                                      'sitio': _sitioController.text,
-                                      'usuario': _usuarioController.text,
-                                      'password': _passwordController.text,
-                                      'ultimaModificacion': DateTime.now(),
-                                    });
-                                    
-                                  // Refrescar contraseñas y cerrar
-                                  _refreshPasswords();
-                                  Navigator.of(context).pop();
-                                  
-                                  // Mostrar mensaje de éxito
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Contraseña actualizada correctamente'),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
+                  onPressed: () {
+                                if (formKey.currentState!.validate()) {
+                                  _updatePassword(
+                                    password.id,
+                                    sitioController.text,
+                                    usuarioController.text,
+                                    passwordController.text,
+                                    password.isFavorite,
                                   );
+                                  Navigator.of(context).pop();
                                 }
                               },
                               style: ElevatedButton.styleFrom(
@@ -2036,14 +1964,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   
-  // Widget reutilizable para campos de texto estilo Apple
+  // Método para crear campos de texto
   Widget _buildTextField({
     required TextEditingController controller,
     required bool isDarkMode,
     required IconData prefixIcon,
     required String hintText,
-    Widget? suffix,
     bool obscureText = false,
+    Widget? suffix,
     String? Function(String?)? validator,
   }) {
     return Container(
@@ -2065,20 +1993,23 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: TextFormField(
         controller: controller,
-        obscureText: obscureText,
         style: TextStyle(
-          color: isDarkMode ? Colors.white : Colors.black,
+          // Forzar el color negro para el texto en cualquier modo
+          color: Colors.black,
           fontSize: 16,
           fontWeight: FontWeight.w500,
         ),
-        cursorColor: isDarkMode ? Colors.white : Colors.blue,
+        cursorColor: Colors.blue,
         cursorWidth: 1.2,
-        cursorRadius: Radius.circular(1),
+        obscureText: obscureText,
         decoration: InputDecoration(
+          // Asegurar fondo blanco para contraste con texto negro
+          fillColor: Colors.white,
+          filled: true,
           contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
           hintText: hintText,
           hintStyle: TextStyle(
-            color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade500,
+            color: Colors.grey.shade500,
             fontWeight: FontWeight.normal,
           ),
           prefixIcon: Padding(
@@ -2089,7 +2020,10 @@ class _HomeScreenState extends State<HomeScreen> {
               size: 22,
             ),
           ),
-          suffixIcon: suffix,
+          suffixIcon: suffix != null ? Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: suffix,
+          ) : null,
           border: InputBorder.none,
           focusedBorder: InputBorder.none,
           enabledBorder: InputBorder.none,
@@ -2182,7 +2116,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.amber,
                     onTap: () {
                       _toggleFavoritePassword(password);
-                      setState(() {
+                    setState(() {
                         // No podemos modificar directamente password.isFavorite porque es final
                         // Solo actualizamos la UI, la base de datos ya se actualizó en _toggleFavoritePassword
                       });
@@ -2193,9 +2127,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (updatedPassword != null) {
                           _showPasswordDetails(updatedPassword);
                         }
-                      });
-                    },
-                  ),
+                    });
+                  },
+                ),
                   SizedBox(width: 16),
                   // Botón de carpeta
                   _buildQuickActionButton(
@@ -2205,9 +2139,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: () {
                       Navigator.of(context).pop();
                       _showManageFolders(password);
-                    },
-                  ),
-                ],
+                  },
+                ),
+              ],
               ),
               
               SizedBox(height: 24),
@@ -2274,9 +2208,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontSize: 16,
                             color: isDarkMode ? Colors.white : Colors.black87,
                           ),
-                        ),
-                      ],
-                    ),
+            ),
+          ],
+        ),
                     SizedBox(height: 16),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -3378,7 +3312,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Navigator.pop(context);
                               },
                             );
-                          }).toList(),
+                          }),
                           
                           Divider(height: 1),
                           
@@ -4315,13 +4249,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(12),
                                         ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
                           
                           List<dynamic> folders = snapshot.data as List;
                           // Crear una copia local de los folderIds
@@ -4491,9 +4425,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // Actualizar en Firebase
       FirebaseFirestore.instance
-          .collection('users')
+          .collection('usuarios')
           .doc(currentUser.uid)
-          .collection('passwords')
+          .collection('pass')
           .doc(password.id)
           .update({
         'folderIds': newFolderIds,
@@ -4501,30 +4435,13 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       
       // Mostrar mensaje de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Carpetas actualizadas correctamente'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showNotification('Carpetas actualizadas correctamente');
       
       // Refrescar passwords
       _refreshPasswords();
     } catch (e) {
       print('Error al actualizar carpetas: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al actualizar carpetas'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showNotification('Error al actualizar carpetas', isError: true);
     }
   }
   
@@ -4536,9 +4453,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // Actualizar en Firebase
       FirebaseFirestore.instance
-          .collection('users')
+          .collection('usuarios')
           .doc(currentUser.uid)
-          .collection('passwords')
+          .collection('pass')
           .doc(password.id)
           .update({
         'isFavorite': !password.isFavorite,
@@ -4546,45 +4463,28 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       
       // Mostrar mensaje de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(password.isFavorite 
-              ? 'Eliminado de favoritos'
-              : 'Añadido a favoritos'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showNotification(password.isFavorite 
+          ? 'Eliminado de favoritos'
+          : 'Añadido a favoritos');
       
       // Refrescar passwords
       _refreshPasswords();
     } catch (e) {
       print('Error al actualizar favorito: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al actualizar favorito'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showNotification('Error al actualizar favorito', isError: true);
     }
   }
 
   void _addPassword() {
-    final TextEditingController _sitioController = TextEditingController();
-    final TextEditingController _usuarioController = TextEditingController();
-    final TextEditingController _passwordController = TextEditingController();
+    final TextEditingController sitioController = TextEditingController();
+    final TextEditingController usuarioController = TextEditingController();
+    final TextEditingController passwordController = TextEditingController();
     
-    final _formKey = GlobalKey<FormState>();
-    bool _showPassword = false;
-    bool _isFavorite = false;
-    String? _errorMessage;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final formKey = GlobalKey<FormState>();
+    bool showPassword = false;
+    bool isFavorite = false;
+    String? errorMessage;
+    final isDarkMode = _isDarkMode;
     
     showModalBottomSheet(
       context: context,
@@ -4615,7 +4515,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Form(
-                    key: _formKey,
+                    key: formKey,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4676,39 +4576,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 24),
                         
-                        if (_errorMessage != null)
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(12),
-                            margin: EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.red.shade200,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  color: Colors.red,
-                                  size: 20,
-                                ),
-                  SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _errorMessage!,
-                                    style: TextStyle(
-                                      color: Colors.red.shade800,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        
                         // Campo de Sitio
                         Text(
                           'Sitio web',
@@ -4720,7 +4587,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 8),
                         _buildTextField(
-                          controller: _sitioController,
+                          controller: sitioController,
                           isDarkMode: isDarkMode,
                           prefixIcon: Icons.web_rounded,
                           hintText: 'Ingresa el sitio web',
@@ -4744,7 +4611,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 8),
                         _buildTextField(
-                          controller: _usuarioController,
+                          controller: usuarioController,
                           isDarkMode: isDarkMode,
                           prefixIcon: Icons.person_rounded,
                           hintText: 'Ingresa el nombre de usuario',
@@ -4774,8 +4641,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               onTap: () {
                                 String generatedPassword = _generateRandomPassword();
                                 setState(() {
-                                  _passwordController.text = generatedPassword;
-                                  _showPassword = true;
+                                  passwordController.text = generatedPassword;
+                                  showPassword = true;
                                 });
                                 
                                 // Mostrar un pequeño mensaje de confirmación
@@ -4829,19 +4696,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 8),
                         _buildTextField(
-                          controller: _passwordController,
+                          controller: passwordController,
                           isDarkMode: isDarkMode,
                           prefixIcon: Icons.lock_rounded,
                           hintText: 'Ingresa la contraseña',
-                          obscureText: !_showPassword,
+                          obscureText: !showPassword,
                           suffix: GestureDetector(
                             onTap: () {
                               setState(() {
-                                _showPassword = !_showPassword;
+                                showPassword = !showPassword;
                               });
                             },
                             child: Icon(
-                              _showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                              showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                               color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
                               size: 22,
                             ),
@@ -4859,7 +4726,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         InkWell(
                           onTap: () {
                             setState(() {
-                              _isFavorite = !_isFavorite;
+                              isFavorite = !isFavorite;
                             });
                           },
                           borderRadius: BorderRadius.circular(12),
@@ -4869,18 +4736,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 Container(
                                   decoration: BoxDecoration(
-                                    color: _isFavorite ? Colors.amber.withOpacity(0.1) : isDarkMode ? Colors.transparent : Colors.grey.shade100,
+                                    color: isFavorite ? Colors.amber.withOpacity(0.1) : isDarkMode ? Colors.transparent : Colors.grey.shade100,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: _isFavorite ? Colors.amber : Colors.transparent,
+                                      color: isFavorite ? Colors.amber : Colors.transparent,
                                       width: 1,
                                     ),
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.all(2.0),
                                     child: Icon(
-                                      _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                                      color: _isFavorite ? Colors.amber : isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                                      isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+                                      color: isFavorite ? Colors.amber : isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                                       size: 24,
                                     ),
                                   ),
@@ -4896,10 +4763,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 Spacer(),
                                 Switch.adaptive(
-                                  value: _isFavorite,
+                                  value: isFavorite,
                                   onChanged: (value) {
                                     setState(() {
-                                      _isFavorite = value;
+                                      isFavorite = value;
                                     });
                                   },
                                   activeColor: Colors.amber,
@@ -4933,12 +4800,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(width: 12),
                             ElevatedButton(
                               onPressed: () {
-                                if (_formKey.currentState!.validate()) {
+                                if (formKey.currentState!.validate()) {
                                   _savePasswordWithFavorite(
-                                    _sitioController.text,
-                                    _usuarioController.text,
-                                    _passwordController.text,
-                                    _isFavorite,
+                                    sitioController.text,
+                                    usuarioController.text,
+                                    passwordController.text,
+                                    isFavorite,
                                   );
                                   Navigator.of(context).pop();
                                 }
@@ -4982,9 +4849,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // Generar un ID único
       final String passwordId = FirebaseFirestore.instance
-          .collection('users')
+          .collection('usuarios')
           .doc(currentUser.uid)
-          .collection('passwords')
+          .collection('pass')
           .doc()
           .id;
       
@@ -4998,43 +4865,26 @@ class _HomeScreenState extends State<HomeScreen> {
         'fechaCreacion': now,
         'ultimaModificacion': now,
         'isFavorite': isFavorite,
-        'isDeleted': false,
+        'isInTrash': false,
         'folderIds': <String>[],
       };
       
       // Guardar en Firebase
       FirebaseFirestore.instance
-          .collection('users')
+          .collection('usuarios')
           .doc(currentUser.uid)
-          .collection('passwords')
+          .collection('pass')
           .doc(passwordId)
           .set(passwordData);
       
       // Mostrar mensaje de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Contraseña guardada correctamente'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showNotification('Contraseña guardada correctamente');
       
       // Refrescar passwords
       _refreshPasswords();
     } catch (e) {
       print('Error al guardar contraseña: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar la contraseña'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showNotification('Error al guardar la contraseña', isError: true);
     }
   }
   
@@ -5065,9 +4915,9 @@ class _HomeScreenState extends State<HomeScreen> {
     
     try {
       final doc = await FirebaseFirestore.instance
-          .collection('users')
+          .collection('usuarios')
           .doc(currentUser.uid)
-          .collection('passwords')
+          .collection('pass')
           .doc(passwordId)
           .get();
           
@@ -5079,4 +4929,187 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return null;
   }
+
+  // Método para construir los elementos de la barra de navegación estilo Apple
+  Widget _buildNavItem({
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+    required bool isSelected,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final isDarkMode = _isDarkMode;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                isSelected ? activeIcon : icon,
+                color: isSelected ? color : isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
+                size: isSelected ? 26 : 24,
+              ),
+            ),
+            SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? color : isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Método auxiliar para mostrar notificaciones estilo iOS
+  void _showNotification(String message, {bool isError = false}) {
+    // Asegurar que no hay notificaciones previas
+    ScaffoldMessenger.of(context).clearSnackBars();
+    
+    final isDarkMode = _isDarkMode;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isError
+                    ? Colors.red.withOpacity(0.2)
+                    : Colors.green.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                isError ? Icons.error_outline : Icons.check_circle_outline,
+                color: isError ? Colors.red : Colors.green,
+                size: 20,
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black.withOpacity(0.8),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isDarkMode 
+            ? Color(0xFF2C2C2E) 
+            : Colors.white,
+        behavior: SnackBarBehavior.floating,
+        elevation: 6,
+        margin: EdgeInsets.all(10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isDarkMode 
+                ? Colors.grey.withOpacity(0.2) 
+                : Colors.grey.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        duration: Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: isError 
+              ? Colors.red 
+              : (isDarkMode ? Colors.blue : Colors.blue.shade700),
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// Clase para dibujar el patrón de fondo estilo Apple
+class BackgroundPatternPainter extends CustomPainter {
+  final Color color;
+  final double patternSize;
+  final double strokeWidth;
+
+  BackgroundPatternPainter({
+    required this.color,
+    required this.patternSize,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Patrón de puntos principal
+    final dotPaint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.fill;
+
+    // Dibujar grid de puntos principal
+    for (double x = 0; x < size.width; x += patternSize) {
+      for (double y = 0; y < size.height; y += patternSize) {
+        // Alternar tamaños de puntos para crear interés visual
+        if ((x / patternSize).floor() % 2 == (y / patternSize).floor() % 2) {
+          canvas.drawCircle(Offset(x, y), 1.2, dotPaint);
+        } else {
+          canvas.drawCircle(Offset(x, y), 0.8, dotPaint);
+        }
+      }
+    }
+
+    // Dibujar líneas de cuadrícula muy sutiles
+    final gridPaint = Paint()
+      ..color = color.withOpacity(0.15)
+      ..strokeWidth = 0.5
+      ..style = PaintingStyle.stroke;
+
+    // Líneas horizontales espaciadas
+    for (double y = patternSize * 4; y < size.height; y += patternSize * 8) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    // Líneas verticales espaciadas
+    for (double x = patternSize * 4; x < size.width; x += patternSize * 8) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+
+    // Dibujar algunos círculos grandes de fondo para añadir profundidad
+    final bgCirclePaint = Paint()
+      ..color = color.withOpacity(0.04)
+      ..style = PaintingStyle.fill;
+
+    // Círculo superior izquierdo
+    canvas.drawCircle(
+      Offset(size.width * 0.3, size.height * 0.2),
+      size.width * 0.4,
+      bgCirclePaint,
+    );
+
+    // Círculo inferior derecho
+    canvas.drawCircle(
+      Offset(size.width * 0.7, size.height * 0.8),
+      size.width * 0.3,
+      bgCirclePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -121,21 +121,47 @@ class _SettingsScreenState extends State<SettingsScreen> with InactivityDetector
           _buildSectionHeader('PREFERENCIAS'),
           _buildSettingsCard(
             children: [
-              _buildSettingsTile(
-                title: 'Mostrar códigos TOTP',
-                subtitle: 'Mostrar códigos de autenticación en la lista',
-                leading: _buildIconContainer(
-                  icon: Icons.qr_code,
-                  color: Colors.purple,
+              MouseRegion(
+                cursor: SystemMouseCursors.forbidden,
+                child: AbsorbPointer(
+                  child: Opacity(
+                    opacity: 0.5,
+                    child: _buildSettingsTile(
+                      title: 'Mostrar códigos TOTP',
+                      subtitle: 'Funcionalidad temporalmente deshabilitada',
+                      leading: Stack(
+                        children: [
+                          _buildIconContainer(
+                            icon: Icons.qr_code,
+                            color: Colors.grey,
+                          ),
+                          Positioned(
+                            right: -2,
+                            top: -2,
+                            child: Container(
+                              padding: EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 10,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      trailing: Switch.adaptive(
+                        value: false,
+                        activeColor: Colors.grey,
+                        onChanged: null,
+                      ),
+                      divider: false,
+                    ),
+                  ),
                 ),
-                trailing: Switch.adaptive(
-                  value: settings.showTOTPCodes,
-                  activeColor: Colors.blue,
-                  onChanged: (value) {
-                    settings.setShowTOTPCodes(value);
-                  },
-                ),
-                divider: false,
               ),
             ],
           ),

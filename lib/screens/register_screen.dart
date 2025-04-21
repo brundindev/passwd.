@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/services.dart';
+import '../utils/snackbar_utils.dart';
+import 'package:email_validator/email_validator.dart';
+import 'dart:ui';
+import 'dart:math';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,9 +22,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  bool _showPassword = false;
-  bool _showConfirmPassword = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   String? _errorMessage;
+  bool _isDarkMode = true; // Valor predeterminado es modo oscuro
 
   @override
   void dispose() {
@@ -44,11 +51,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _errorMessage = null;
     });
     
+    // Mostrar diálogo de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          content: Container(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Creando cuenta...',
+                  style: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    
     // Obtener valores de los controladores
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
-    
-    print("Iniciando registro para email: $email");
     
     // Configurar un timeout global para todo el proceso
     bool timeoutOccurred = false;
@@ -60,14 +97,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _isLoading = false;
         });
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('El registro tardó demasiado tiempo, pero tu cuenta ha sido creada. Intenta iniciar sesión.'),
-            backgroundColor: Colors.orange,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 6),
-          ),
-        );
+        // Cerrar diálogo de carga
+        if (Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        
+        showSnackBar(context, 'El registro tardó demasiado tiempo, pero tu cuenta ha sido creada. Intenta iniciar sesión.');
         
         Navigator.pushReplacementNamed(context, '/login');
       }
@@ -100,6 +135,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Continuamos aunque falle el cierre de sesión
       }
       
+      // Cerrar el diálogo de carga
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      
       // Paso 4: Actualizar UI y mostrar el popup (solo si no ha ocurrido timeout)
       if (!timeoutOccurred && mounted) {
         setState(() {
@@ -111,6 +151,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } catch (e) {
       print("❌ ERROR EN REGISTRO: $e");
+      
+      // Cerrar el diálogo de carga
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
       
       // Manejar el error solo si no ha ocurrido timeout
       if (!timeoutOccurred && mounted) {
@@ -126,8 +171,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           errorMsg = 'Error de conexión a Internet. Comprueba tu conexión y vuelve a intentarlo.';
         } else if (e.toString().contains('timeout')) {
           errorMsg = 'El registro ha tardado demasiado tiempo. Por favor, inténtalo de nuevo.';
-        } else if (e.toString().contains('Error durante el inicio de sesión con Google')) {
-          errorMsg = 'Error durante el registro con Google. Por favor, inténtalo de nuevo.';
         } else {
           // Intentar usar el servicio de manejo de errores para obtener un mensaje más específico
           try {
@@ -143,14 +186,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _errorMessage = errorMsg;
         });
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 4),
-          ),
-        );
+        showSnackBar(context, errorMsg);
       }
     }
   }
@@ -161,197 +197,116 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _errorMessage = null;
     });
     
-    // Variable para rastrear si el diálogo está mostrado
-    bool isDialogShowing = false;
+    // Mostrar diálogo de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          content: Container(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Conectando con Google...',
+                  style: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
     
     try {
-      // Mostrar diálogo de carga
-      if (mounted) {
-        isDialogShowing = true;
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 16,
-              child: Container(
-                padding: const EdgeInsets.all(24.0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      height: 50, 
-                      width: 50, 
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-                        strokeWidth: 5,
-                      )
-                    ),
-                    SizedBox(height: 24),
-                    Text(
-                      'Registrando con Google...',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Conectando con Google',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      }
-      
-      // Aumentamos el timeout a 30 segundos para dar más tiempo al primer intento
-      Future<void> timeoutFuture = Future.delayed(Duration(seconds: 30)).then((_) {
-        if (mounted && isDialogShowing && Navigator.of(context, rootNavigator: true).canPop()) {
-          print("Timeout de seguridad activado para cerrar el diálogo de carga en Google Sign-In");
-          try {
-            Navigator.of(context, rootNavigator: true).pop();
-            isDialogShowing = false;
-            setState(() {
-              _isLoading = false;
-              _errorMessage = "La conexión con Google está tardando demasiado. Por favor, inténtalo de nuevo.";
-            });
-          } catch (e) {
-            print("Error al cerrar el diálogo por timeout: $e");
-          }
-        }
-      });
-      
-      print("Iniciando proceso de registro con Google...");
-      final authService = Provider.of<AuthService>(context, listen: false);
-      
-      // Intentamos directamente la autenticación con Google sin usar Future.any
-      // para evitar posibles interrupciones tempranas
-      try {
-        final result = await authService.signInWithGoogle();
-        
-        // Si llegamos aquí, cancelamos el timeout
-        timeoutFuture.ignore();
-        
-        print("Registro con Google exitoso. UID: ${result.user?.uid}");
-      
-        // Verificar que el usuario esté autenticado
-        final currentUser = FirebaseAuth.instance.currentUser;
-        print("Verificando estado de autenticación después del registro con Google: ${currentUser?.uid ?? 'No autenticado'}");
-        
-        if (currentUser == null) {
-          throw Exception("El usuario no fue autenticado correctamente después del registro con Google");
-        }
-        
-        // Esperar un poco para hacer visible la carga
-        await Future.delayed(Duration(milliseconds: 800));
-        
-        if (mounted) {
-          // Cerrar el diálogo de carga si está abierto
-          if (isDialogShowing && Navigator.of(context, rootNavigator: true).canPop()) {
-            try {
-              Navigator.of(context, rootNavigator: true).pop();
-              isDialogShowing = false;
-            } catch (navError) {
-              print("Error al cerrar diálogo: $navError");
-            }
-          }
-          
-          // Detener completamente la carga
-          setState(() {
-            _isLoading = false;
-          });
-          
-          // Mostrar mensaje de éxito
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Cuenta de Google vinculada correctamente. ¡Bienvenido a PASSWD!'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
-            ),
-          );
-          
-          print("Navegando a la pantalla principal (HomeScreen)...");
-          
-          // Navegar directamente a HomeScreen
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            '/home',
-            (route) => false,
-          );
-        }
-      } catch (e) {
-        print("Error específico en la autenticación con Google: $e");
-        
-        // Cancelamos el timeout ya que ya tenemos un error
-        timeoutFuture.ignore();
-        
-        if (mounted) {
-          // Cerrar el diálogo de carga si está abierto
-          if (isDialogShowing && Navigator.of(context, rootNavigator: true).canPop()) {
-            try {
-              Navigator.of(context, rootNavigator: true).pop();
-              isDialogShowing = false;
-            } catch (navError) {
-              print("Error al cerrar diálogo: $navError");
-            }
-          }
-          
-          setState(() {
-            _isLoading = false;
-            
-            // Mensaje de error más específico según el tipo de error
-            if (e.toString().contains('canceled')) {
-              _errorMessage = "Se canceló el inicio de sesión con Google. Por favor, inténtalo de nuevo.";
-            } else if (e.toString().contains('network')) {
-              _errorMessage = "Error de conexión. Verifica tu conexión a internet e inténtalo de nuevo.";
-            } else if (e.toString().contains('credential')) {
-              _errorMessage = "Error de credenciales. Por favor, inténtalo de nuevo con otra cuenta de Google.";
-            } else {
-              _errorMessage = "No se pudo completar el registro con Google. Por favor, inténtalo de nuevo.";
-            }
-          });
-        }
-      }
-      
-    } catch (e) {
-      print("Error general durante el registro con Google: $e");
-      
-      // Cerrar el diálogo de carga si está abierto
-      if (mounted && isDialogShowing && Navigator.of(context, rootNavigator: true).canPop()) {
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-          isDialogShowing = false;
-        } catch (navError) {
-          print("Error al cerrar diálogo: $navError");
-        }
-      }
-      
-      if (mounted) {
+      // Iniciar el flujo de autenticación de Google
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      // Si el usuario cancela el inicio de sesión
+      if (googleUser == null) {
+        // Cerrar diálogo de carga
+        Navigator.of(context, rootNavigator: true).pop();
         setState(() {
           _isLoading = false;
-          try {
-            // Intentar usar el servicio de manejo de errores para obtener un mensaje más específico
-            final authService = Provider.of<AuthService>(context, listen: false);
-            _errorMessage = authService.handleAuthError(e);
-          } catch (_) {
-            _errorMessage = "Ocurrió un error inesperado durante el registro con Google. Por favor, inténtalo de nuevo más tarde.";
-          }
         });
+        return;
       }
+
+      // Obtener detalles de autenticación de la solicitud
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Crear una nueva credencial
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Iniciar sesión con Firebase usando la credencial
+      final result = await FirebaseAuth.instance.signInWithCredential(credential);
+      
+      // Cerrar el diálogo de carga
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Mostrar mensaje de éxito
+      showSnackBar(
+        context,
+        'Cuenta de Google vinculada correctamente. ¡Bienvenido a PASSWD!',
+      );
+      
+      // Navegar a la pantalla principal
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/home',
+        (route) => false,
+      );
+    } catch (e) {
+      // Cerrar el diálogo de carga
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      
+      setState(() {
+        _isLoading = false;
+        
+        String errorMessage = 'Error al iniciar sesión con Google';
+        
+        if (e is FirebaseAuthException) {
+          if (e.code == 'account-exists-with-different-credential') {
+            errorMessage = 'Ya existe una cuenta con este correo electrónico pero con diferente método de inicio de sesión';
+          } else if (e.code == 'invalid-credential') {
+            errorMessage = 'Error en las credenciales de acceso';
+          } else if (e.code == 'operation-not-allowed') {
+            errorMessage = 'El inicio de sesión con Google no está habilitado';
+          } else if (e.code == 'user-disabled') {
+            errorMessage = 'Esta cuenta ha sido deshabilitada';
+          } else if (e.code == 'user-not-found') {
+            errorMessage = 'No se encontró ninguna cuenta con este correo electrónico';
+          } else if (e.code == 'network-request-failed') {
+            errorMessage = 'Error de conexión a internet. Verifica tu conexión e intenta de nuevo';
+          }
+        }
+        
+        _errorMessage = errorMessage;
+      });
+      
+      showSnackBar(context, _errorMessage!);
     }
   }
 
@@ -362,8 +317,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(15.0),
           ),
           title: Row(
             children: [
@@ -378,6 +334,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   'Verificación de Email',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
+                    color: _isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
               ),
@@ -390,12 +347,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
               if (emailSent)
                 Text(
                   'Hemos enviado un correo de verificación a:',
-                  style: TextStyle(fontSize: 14),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _isDarkMode ? Colors.white70 : Colors.black87,
+                  ),
                 )
               else
                 Text(
                   'Se ha creado tu cuenta pero hubo un problema al enviar el correo de verificación a:',
-                  style: TextStyle(fontSize: 14),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _isDarkMode ? Colors.white70 : Colors.black87,
+                  ),
                 ),
               SizedBox(height: 8),
               Text(
@@ -403,16 +366,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: Colors.white,
+                  color: _isDarkMode ? Colors.white : Colors.black,
                 ),
               ),
               SizedBox(height: 16),
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: emailSent ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                  color: emailSent 
+                    ? (_isDarkMode ? Colors.green.withOpacity(0.1) : Colors.green.withOpacity(0.1))
+                    : (_isDarkMode ? Colors.orange.withOpacity(0.1) : Colors.orange.withOpacity(0.1)),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: emailSent ? Colors.green.shade300 : Colors.orange.shade300),
+                  border: Border.all(
+                    color: emailSent 
+                      ? (_isDarkMode ? Colors.green.shade700 : Colors.green.shade300)
+                      : (_isDarkMode ? Colors.orange.shade700 : Colors.orange.shade300)
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,7 +401,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ? 'Por favor, verifica tu correo electrónico antes de iniciar sesión.'
                                 : 'No pudimos enviar el correo de verificación. Podrás solicitar uno nuevo desde la pantalla de inicio de sesión.',
                             style: TextStyle(
-                              color: emailSent ? Colors.green.shade800 : Colors.orange.shade800,
+                              color: emailSent 
+                                ? (_isDarkMode ? Colors.green.shade300 : Colors.green.shade800)
+                                : (_isDarkMode ? Colors.orange.shade300 : Colors.orange.shade800),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -444,7 +415,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Text(
                         'Revisa tu bandeja de entrada y haz clic en el enlace de verificación que hemos enviado.',
                         style: TextStyle(
-                          color: Colors.green.shade700,
+                          color: _isDarkMode ? Colors.green.shade300 : Colors.green.shade700,
                           fontSize: 13,
                         ),
                       ),
@@ -462,6 +433,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     // Intentar reenviar el correo de verificación
                     final authService = Provider.of<AuthService>(context, listen: false);
                     
+                    // Mostrar diálogo de carga
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15.0),
+                          ),
+                          content: Container(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                                ),
+                                SizedBox(height: 20),
+                                Text(
+                                  'Reenviando correo...',
+                                  style: TextStyle(
+                                    color: _isDarkMode ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                    
                     // Iniciar sesión temporalmente
                     try {
                       final result = await authService.signInWithEmailAndPassword(
@@ -471,28 +474,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       await result.user?.sendEmailVerification();
                       await authService.signOut();
                       
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Correo de verificación reenviado'),
-                          backgroundColor: Colors.green,
-                          behavior: SnackBarBehavior.floating,
-                        ),
+                      // Cerrar diálogo de carga
+                      Navigator.of(context, rootNavigator: true).pop();
+                      
+                      showSnackBar(
+                        context,
+                        'Correo de verificación reenviado',
                       );
                     } catch (e) {
+                      // Cerrar diálogo de carga
+                      Navigator.of(context, rootNavigator: true).pop();
+                      
                       print("Error al reenviar verificación: $e");
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('No se pudo reenviar el correo de verificación'),
-                          backgroundColor: Colors.red,
-                          behavior: SnackBarBehavior.floating,
-                        ),
+                      showSnackBar(
+                        context,
+                        'No se pudo reenviar el correo de verificación',
                       );
                     }
                   } catch (e) {
                     print("Error general al reenviar correo: $e");
                   }
                 },
-                child: Text('Reenviar correo'),
+                child: Text(
+                  'Reenviar correo',
+                  style: TextStyle(
+                    color: Colors.blue,
+                  ),
+                ),
               ),
             ElevatedButton(
               onPressed: () {
@@ -503,7 +511,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
+                backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -517,330 +525,493 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String labelText,
+    required IconData prefixIcon,
+    bool isPassword = false,
+    bool isConfirmPassword = false,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword ? _obscurePassword : (isConfirmPassword ? _obscureConfirmPassword : false),
+      validator: validator,
+      style: TextStyle(
+        color: _isDarkMode ? Colors.white : Colors.black,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: TextStyle(
+          color: _isDarkMode ? Colors.white70 : Colors.black54,
+          fontSize: 14,
+        ),
+        prefixIcon: Icon(
+          prefixIcon,
+          color: _isDarkMode ? Colors.white70 : Colors.black54,
+          size: 20,
+        ),
+        suffixIcon: isPassword || isConfirmPassword
+            ? IconButton(
+                icon: Icon(
+                  (isPassword ? _obscurePassword : _obscureConfirmPassword) 
+                    ? Icons.visibility_off 
+                    : Icons.visibility,
+                  color: _isDarkMode ? Colors.white70 : Colors.black54,
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() {
+                    if (isPassword) {
+                      _obscurePassword = !_obscurePassword;
+                    } else {
+                      _obscureConfirmPassword = !_obscureConfirmPassword;
+                    }
+                  });
+                },
+              )
+            : null,
+        filled: true,
+        fillColor: _isDarkMode 
+            ? Colors.white.withOpacity(0.1) 
+            : Colors.black.withOpacity(0.05),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: _isDarkMode 
+                ? Colors.white.withOpacity(0.2) 
+                : Colors.black.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.blue,
+            width: 1.5,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.red.withOpacity(0.8),
+            width: 1,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.red,
+            width: 1.5,
+          ),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Fondo con GIF animado
-          SizedBox.expand(
-            child: Image.asset(
-              'assets/background.gif',
-              fit: BoxFit.cover,
-            ),
-          ),
-          
-          // Capa de oscurecimiento para mejorar legibilidad
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
-            ),
-          ),
-          
-          // Patrón de puntos decorativos
-          CustomPaint(
-            size: Size(MediaQuery.of(context).size.width, MediaQuery.of(context).size.height),
-            painter: DotPatternPainter(),
-          ),
-          
-          // Contenido principal
-          SafeArea(
-            child: Column(
-              children: [
-                // Botón de volver atrás
-                Padding(
-                  padding: const EdgeInsets.only(left: 8.0, top: 8.0),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                    ),
+    final size = MediaQuery.of(context).size;
+    
+    return Theme(
+      data: _isDarkMode
+          ? ThemeData.dark().copyWith(
+              textTheme: ThemeData.dark().textTheme.apply(
+                    fontFamily: 'SF Pro',
                   ),
+              colorScheme: ColorScheme.dark(
+                primary: Colors.blue,
+                secondary: Colors.blueAccent,
+                background: Colors.black,
+                surface: Colors.grey[900]!,
+              ),
+            )
+          : ThemeData.light().copyWith(
+              textTheme: ThemeData.light().textTheme.apply(
+                    fontFamily: 'SF Pro',
+                  ),
+              colorScheme: ColorScheme.light(
+                primary: Colors.blue,
+                secondary: Colors.blueAccent,
+                background: Colors.white,
+                surface: Colors.grey[100]!,
+              ),
+            ),
+      child: Scaffold(
+        backgroundColor: _isDarkMode ? Colors.black : Colors.white,
+        body: Stack(
+          children: [
+            // Fondo con GIF y transparencia
+            Positioned.fill(
+              child: Opacity(
+                opacity: _isDarkMode ? 0.7 : 0.3,
+                child: Image.asset(
+                  'assets/background.gif',
+                  fit: BoxFit.cover,
                 ),
-                
-                // Contenido del formulario
-                Expanded(
-                  child: Center(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.white.withOpacity(0.2),
-                                      blurRadius: 20,
-                                      spreadRadius: 5,
+              ),
+            ),
+            
+            // Filtro de fondo con blur
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              child: Container(
+                color: (_isDarkMode ? Colors.black : Colors.white).withOpacity(0.3),
+              ),
+            ),
+            
+            // Patrón de puntos
+            CustomPaint(
+              painter: DotPatternPainter(
+                color: _isDarkMode ? Colors.white : Colors.black,
+                opacity: _isDarkMode ? 0.15 : 0.07,
+              ),
+              child: Container(),
+            ),
+            
+            // Contenido
+            SafeArea(
+              child: Builder(
+                builder: (context) {
+                  return SingleChildScrollView(
+                    child: Center(
+                      child: Container(
+                        width: size.width > 600 ? 600 : size.width * 0.9,
+                        height: size.height * 0.9,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Botón para volver
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.arrow_back_ios_rounded,
+                                    color: _isDarkMode ? Colors.white : Colors.black,
+                                    size: 20,
+                                  ),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                                
+                                // Toggle para tema claro/oscuro
+                                Row(
+                                  children: [
+                                    Icon(
+                                      _isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                                      color: _isDarkMode ? Colors.white : Colors.black,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 5),
+                                    Switch(
+                                      value: _isDarkMode,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _isDarkMode = value;
+                                        });
+                                      },
+                                      activeColor: Colors.blueAccent,
+                                      inactiveThumbColor: Colors.amber,
+                                      activeTrackColor: Colors.blue.withOpacity(0.5),
+                                      inactiveTrackColor: Colors.orange.withOpacity(0.5),
                                     ),
                                   ],
                                 ),
-                                child: Icon(
-                                  Icons.person_add,
-                                  size: 40,
-                                  color: Colors.white,
-                                ),
+                              ],
+                            ),
+                            
+                            SizedBox(height: 20),
+                            
+                            // Título
+                            Text(
+                              'Crear cuenta',
+                              style: TextStyle(
+                                fontSize: 30,
+                                fontWeight: FontWeight.bold,
+                                color: _isDarkMode ? Colors.white : Colors.black,
                               ),
-                              SizedBox(height: 24),
-                              Text(
-                                'Crear cuenta',
-                                style: Theme.of(context).textTheme.displaySmall,
-                                textAlign: TextAlign.center,
+                            ),
+                            
+                            SizedBox(height: 10),
+                            
+                            Text(
+                              'Protege tus contraseñas con PASSWD',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: _isDarkMode ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.7),
                               ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Protege tus contraseñas con PASSWD',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white.withOpacity(0.7),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 40),
-                              if (_errorMessage != null) 
-                                Container(
-                                  padding: EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.error.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Theme.of(context).colorScheme.error.withOpacity(0.3),
-                                    ),
+                              textAlign: TextAlign.center,
+                            ),
+                            
+                            SizedBox(height: 40),
+                            
+                            if (_errorMessage != null) 
+                              Container(
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.red.withOpacity(0.3),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.error_outline,
-                                        color: Theme.of(context).colorScheme.error,
-                                      ),
-                                      SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          _errorMessage!,
-                                          style: TextStyle(
-                                            color: Theme.of(context).colorScheme.error,
-                                          ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red,
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        _errorMessage!,
+                                        style: TextStyle(
+                                          color: Colors.red,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              if (_errorMessage != null) 
-                                SizedBox(height: 20),
-                              TextFormField(
-                                controller: _emailController,
-                                decoration: InputDecoration(
-                                  labelText: 'Email',
-                                  prefixIcon: Icon(Icons.email, color: Colors.grey[800]),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                style: TextStyle(color: Colors.black87),
-                                keyboardType: TextInputType.emailAddress,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Por favor ingresa tu email';
-                                  }
-                                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                                    return 'Por favor ingresa un email válido';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              SizedBox(height: 16),
-                              TextFormField(
-                                controller: _passwordController,
-                                decoration: InputDecoration(
-                                  labelText: 'Contraseña',
-                                  prefixIcon: Icon(Icons.lock, color: Colors.grey[800]),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _showPassword ? Icons.visibility : Icons.visibility_off,
-                                      color: Theme.of(context).primaryColor,
                                     ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _showPassword = !_showPassword;
-                                      });
-                                    },
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                style: TextStyle(color: Colors.black87),
-                                obscureText: !_showPassword,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Por favor ingresa tu contraseña';
-                                  }
-                                  if (value.length < 6) {
-                                    return 'La contraseña debe tener al menos 6 caracteres';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              SizedBox(height: 16),
-                              TextFormField(
-                                controller: _confirmPasswordController,
-                                decoration: InputDecoration(
-                                  labelText: 'Confirmar contraseña',
-                                  prefixIcon: Icon(Icons.lock, color: Colors.grey[800]),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _showConfirmPassword ? Icons.visibility : Icons.visibility_off,
-                                      color: Theme.of(context).primaryColor,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _showConfirmPassword = !_showConfirmPassword;
-                                      });
-                                    },
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                style: TextStyle(color: Colors.black87),
-                                obscureText: !_showConfirmPassword,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Por favor confirma tu contraseña';
-                                  }
-                                  if (value != _passwordController.text) {
-                                    return 'Las contraseñas no coinciden';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              SizedBox(height: 24),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _register,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.black,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 3,
-                                  ),
-                                  child: _isLoading
-                                      ? CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.black))
-                                      : Text('Crear cuenta', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  ],
                                 ),
                               ),
-                              SizedBox(height: 16),
-                              Row(
+                            
+                            if (_errorMessage != null) SizedBox(height: 20),
+                            
+                            Form(
+                              key: _formKey,
+                              child: Column(
                                 children: [
-                                  Expanded(child: Divider(color: Colors.white30)),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                                    child: Text('O registrarse con', style: TextStyle(color: Colors.white70)),
+                                  // Campo de correo electrónico
+                                  _buildTextField(
+                                    controller: _emailController,
+                                    labelText: 'Correo electrónico',
+                                    prefixIcon: Icons.email_outlined,
+                                    validator: (val) {
+                                      if (val == null || val.isEmpty) {
+                                        return 'Por favor, ingresa tu correo electrónico';
+                                      } else if (!EmailValidator.validate(val)) {
+                                        return 'Ingresa un correo electrónico válido';
+                                      }
+                                      return null;
+                                    },
                                   ),
-                                  Expanded(child: Divider(color: Colors.white30)),
+                                  
+                                  SizedBox(height: 16),
+                                  
+                                  // Campo de contraseña
+                                  _buildTextField(
+                                    controller: _passwordController,
+                                    labelText: 'Contraseña',
+                                    prefixIcon: Icons.lock_outline_rounded,
+                                    isPassword: true,
+                                    validator: (val) {
+                                      if (val == null || val.isEmpty) {
+                                        return 'Por favor, ingresa tu contraseña';
+                                      } else if (val.length < 6) {
+                                        return 'La contraseña debe tener al menos 6 caracteres';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  
+                                  SizedBox(height: 16),
+                                  
+                                  // Campo de confirmar contraseña
+                                  _buildTextField(
+                                    controller: _confirmPasswordController,
+                                    labelText: 'Confirmar contraseña',
+                                    prefixIcon: Icons.lock_outline_rounded,
+                                    isConfirmPassword: true,
+                                    validator: (val) {
+                                      if (val == null || val.isEmpty) {
+                                        return 'Por favor, confirma tu contraseña';
+                                      } else if (val != _passwordController.text) {
+                                        return 'Las contraseñas no coinciden';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  
+                                  SizedBox(height: 30),
+                                  
+                                  // Botón de registro
+                                  ElevatedButton(
+                                    onPressed: _isLoading ? null : _register,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      minimumSize: Size(double.infinity, 50),
+                                      elevation: 0,
+                                    ),
+                                    child: _isLoading
+                                        ? CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white))
+                                        : Text(
+                                            'Crear cuenta',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                  ),
                                 ],
                               ),
-                              SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: OutlinedButton.icon(
-                                  onPressed: _isLoading 
-                                    ? null 
-                                    : () => _signInWithGoogle(),
-                                  icon: Image.asset(
-                                    'assets/google_logo.png',
-                                    height: 24,
+                            ),
+                            
+                            SizedBox(height: 30),
+                            
+                            // Divisor "O"
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: _isDarkMode 
+                                        ? Colors.white.withOpacity(0.2) 
+                                        : Colors.black.withOpacity(0.1),
                                   ),
-                                  label: Text('Google', style: TextStyle(fontSize: 16, color: Colors.white)),
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(color: Colors.white, width: 1),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    'O',
+                                    style: TextStyle(
+                                      color: _isDarkMode ? Colors.white70 : Colors.black54,
+                                      fontSize: 14,
                                     ),
                                   ),
                                 ),
-                              ),
-                              SizedBox(height: 24),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    '¿Ya tienes una cuenta?',
-                                    style: TextStyle(color: Colors.white70),
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: _isDarkMode 
+                                        ? Colors.white.withOpacity(0.2) 
+                                        : Colors.black.withOpacity(0.1),
                                   ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pushReplacementNamed(context, '/login');
-                                    },
+                                ),
+                              ],
+                            ),
+
+                            SizedBox(height: 30),
+                            
+                            // Botón de Google
+                            OutlinedButton.icon(
+                              onPressed: _isLoading ? null : () => _signInWithGoogle(),
+                              icon: Image.asset(
+                                'assets/google_logo.png',
+                                height: 24,
+                              ),
+                              label: Text(
+                                'Continuar con Google',
+                                style: TextStyle(
+                                  fontSize: 16, 
+                                  color: _isDarkMode ? Colors.white : Colors.black,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: _isDarkMode 
+                                      ? Colors.white.withOpacity(0.3) 
+                                      : Colors.black.withOpacity(0.2),
+                                  width: 1,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                minimumSize: Size(double.infinity, 50),
+                              ),
+                            ),
+                            
+                            SizedBox(height: 30),
+                            
+                            // Enlace para iniciar sesión
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '¿Ya tienes una cuenta? ',
+                                  style: TextStyle(
+                                    color: _isDarkMode ? Colors.white70 : Colors.black87,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pushReplacementNamed(context, '/login');
+                                  },
                                   child: Text(
                                     'Inicia sesión',
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: Colors.blue,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// Pintor personalizado para crear un patrón de puntos
 class DotPatternPainter extends CustomPainter {
+  final Color color;
+  final double opacity;
+  
+  DotPatternPainter({
+    this.color = Colors.white,
+    this.opacity = 0.15,
+  });
+  
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = color.withOpacity(opacity)
       ..strokeWidth = 1
       ..strokeCap = StrokeCap.round;
+      
+    final spacing = 25.0; // Espacio entre puntos
+    final dotSize = 1.0; // Tamaño de los puntos
     
-    const spacing = 30.0; // Espacio entre puntos
-    final dotSize = 2.0; // Tamaño de los puntos
+    // Pequeña variación para que los puntos no estén perfectamente alineados
+    final random = Random(42); // Semilla fija para consistencia
     
     for (double x = 0; x < size.width; x += spacing) {
       for (double y = 0; y < size.height; y += spacing) {
-        // Añadir algo de variación en la opacidad para crear un efecto más interesante
-        paint.color = Colors.white.withOpacity(0.1 + (x * y) % 0.3);
-        canvas.drawCircle(Offset(x, y), dotSize, paint);
+        // Añadir una ligera variación a la posición
+        final offsetX = random.nextDouble() * 5 - 2.5;
+        final offsetY = random.nextDouble() * 5 - 2.5;
+        
+        // Variación en la opacidad para crear un efecto más interesante
+        final variableOpacity = opacity * (0.5 + random.nextDouble() * 0.5);
+        paint.color = color.withOpacity(variableOpacity);
+        
+        canvas.drawCircle(
+          Offset(x + offsetX, y + offsetY), 
+          dotSize * (0.8 + random.nextDouble() * 0.4), // Pequeña variación en el tamaño
+          paint
+        );
       }
     }
   }
-
+  
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(DotPatternPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.opacity != opacity;
+  }
 }

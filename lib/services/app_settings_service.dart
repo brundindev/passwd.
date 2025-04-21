@@ -34,7 +34,9 @@ class AppSettingsService extends ChangeNotifier {
     _useBiometrics = _prefs.getBool(_keyUseBiometrics) ?? true;
     _autoLock = _prefs.getBool(_keyAutoLock) ?? true;
     _autoLockDelay = _prefs.getInt(_keyAutoLockDelay) ?? 5;
-    _showTOTPCodes = _prefs.getBool(_keyShowTOTPCodes) ?? true;
+    
+    // Forzar desactivación de TOTP
+    _showTOTPCodes = false;
     
     // Establecer tiempo de actividad inicial
     resetLastActiveTime();
@@ -93,8 +95,9 @@ class AppSettingsService extends ChangeNotifier {
   }
   
   Future<void> setShowTOTPCodes(bool value) async {
-    _showTOTPCodes = value;
-    await _prefs.setBool(_keyShowTOTPCodes, value);
+    // TOTP deshabilitado - siempre devolver false
+    _showTOTPCodes = false;
+    await _prefs.setBool(_keyShowTOTPCodes, false);
     notifyListeners();
   }
   

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../models/password.dart';
-import '../services/totp_service.dart';
 
 class PasswordListItem extends StatefulWidget {
   final Password password;
@@ -309,8 +308,10 @@ class _TOTPWidgetState extends State<TOTPWidget> {
   @override
   void initState() {
     super.initState();
-    _updateCode();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateCode());
+    // No actualizar el código - deshabilitado
+    _currentCode = "------";
+    // Mantener el timer para evitar errores pero no actualizar el código
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {});
   }
 
   @override
@@ -320,33 +321,40 @@ class _TOTPWidgetState extends State<TOTPWidget> {
   }
 
   void _updateCode() {
-    final code = TOTPService.generateTOTP(widget.secret);
-    if (code != _currentCode) {
-      setState(() {
-        _currentCode = code;
-      });
-    }
+    // Método deshabilitado
   }
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: () {
-        if (_currentCode != null) {
-          Clipboard.setData(ClipboardData(text: _currentCode!));
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Código TOTP copiado al portapapeles'),
-              duration: Duration(seconds: 2),
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return MouseRegion(
+      cursor: SystemMouseCursors.forbidden,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDarkMode ? Colors.grey.shade800.withOpacity(0.3) : Colors.grey.shade200.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.lock_outline,
+              size: 12,
+              color: Colors.grey,
             ),
-          );
-        }
-      },
-      child: Text(
-        _currentCode ?? '------',
-        style: const TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 16,
+            SizedBox(width: 4),
+            Text(
+              '- TOTP deshabilitado -',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: Colors.grey,
+                decoration: TextDecoration.lineThrough,
+              ),
+            ),
+          ],
         ),
       ),
     );
