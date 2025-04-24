@@ -1575,7 +1575,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Método para actualizar una contraseña existente
-  void _updatePassword(String passwordId, String sitio, String usuario, String password, bool isFavorite) {
+  void _updatePassword(String passwordId, String sitio, String usuario, String password, bool isFavorite, String notes) {
     try {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
@@ -1592,6 +1592,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'password': password,
           'ultimaModificacion': DateTime.now(),
           'isFavorite': isFavorite,
+          'notes': notes,
         });
       
       // Refrescar contraseñas
@@ -1656,6 +1657,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final TextEditingController sitioController = TextEditingController(text: password.sitio);
     final TextEditingController usuarioController = TextEditingController(text: password.usuario);
     final TextEditingController passwordController = TextEditingController(text: password.password);
+    final TextEditingController notesController = TextEditingController(text: password.notes);
     
     final formKey = GlobalKey<FormState>();
     bool showPassword = false;
@@ -1899,6 +1901,26 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 24),
                         
+                        // Campo de Notas
+                        Text(
+                          'Notas',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        _buildTextField(
+                          controller: notesController,
+                          isDarkMode: isDarkMode,
+                          prefixIcon: Icons.note_rounded,
+                          hintText: 'Ingresa notas adicionales (opcional)',
+                          maxLines: 3,
+                          obscureText: false,
+                        ),
+                        SizedBox(height: 24),
+                        
                         // Botones de acción
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -1929,6 +1951,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     usuarioController.text,
                                     passwordController.text,
                                     password.isFavorite,
+                                    notesController.text,
                                   );
                                   Navigator.of(context).pop();
                                 }
@@ -1973,7 +1996,11 @@ class _HomeScreenState extends State<HomeScreen> {
     bool obscureText = false,
     Widget? suffix,
     String? Function(String?)? validator,
+    int? maxLines,
   }) {
+    // Si el campo es obscureText, maxLines debe ser 1
+    final effectiveMaxLines = obscureText ? 1 : maxLines;
+    
     return Container(
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.white,
@@ -2002,6 +2029,7 @@ class _HomeScreenState extends State<HomeScreen> {
         cursorColor: Colors.blue,
         cursorWidth: 1.2,
         obscureText: obscureText,
+        maxLines: effectiveMaxLines,
         decoration: InputDecoration(
           // Asegurar fondo blanco para contraste con texto negro
           fillColor: Colors.white,
@@ -2276,6 +2304,107 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: 24),
+              
+              // Sección de notas
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Colors.grey.shade900.withOpacity(0.4) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.note_rounded, 
+                            color: Colors.amber,
+                            size: 20,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Notas',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+                          width: 1,
+                        ),
+                      ),
+                      child: password.notes.isEmpty 
+                        ? Text(
+                            'No hay notas adicionales',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontStyle: FontStyle.italic,
+                              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                            ),
+                          )
+                        : Text(
+                            password.notes,
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: isDarkMode ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                    ),
+                    if (password.notes.isNotEmpty) ...[
+                      SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          _buildActionButton(
+                            icon: Icons.copy_rounded,
+                            label: 'Copiar',
+                            color: Colors.amber,
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: password.notes));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Notas copiadas al portapapeles'),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  backgroundColor: isDarkMode ? Colors.grey.shade800 : Colors.black87,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -2610,87 +2739,268 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
     
-    showDialog(
+    showModalBottomSheet(
                 context: context,
-      builder: (dialogContext) {
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
         final TextEditingController siteController = TextEditingController();
         final TextEditingController usernameController = TextEditingController();
         final TextEditingController passwordController = TextEditingController();
+        final TextEditingController notesController = TextEditingController();
         bool showPassword = false;
         
         return StatefulBuilder(
           builder: (context, setState) {
-            return AlertDialog(
-              title: Text('Añadir contraseña'),
-              content: SingleChildScrollView(
+            final isDarkMode = _isDarkMode;
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              decoration: BoxDecoration(
+                color: isDarkMode ? Color(0xFF1C1C1E) : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(
-                      controller: siteController,
-                      style: TextStyle(color: Colors.grey[700]),
-                      decoration: InputDecoration(
-                        labelText: 'Sitio web o aplicación',
-                        prefixIcon: Icon(Icons.web),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    TextField(
-                      controller: usernameController,
-                      style: TextStyle(color: Colors.grey[700]),
-                      decoration: InputDecoration(
-                        labelText: 'Nombre de usuario o email',
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    TextField(
-                      controller: passwordController,
-                      style: TextStyle(color: Colors.grey[700]),
-                      obscureText: !showPassword,
-                      decoration: InputDecoration(
-                        labelText: 'Contraseña',
-                        prefixIcon: Icon(Icons.lock),
-                        suffixIcon: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        // Indicador de arrastre
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 24),
+                        
+                        // Título
+                        Row(
                           children: [
-                IconButton(
-                  icon: Icon(
-                                showPassword ? Icons.visibility_off : Icons.visibility,
-                                color: Theme.of(context).primaryColor,
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.add_rounded,
+                                color: Colors.blue,
+                                size: 24,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Añadir contraseña',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDarkMode ? Colors.white : Colors.black,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Guarda los detalles de tu contraseña',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 24),
+                        
+                        // Campo de Sitio
+                        Text(
+                          'Sitio web',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        _buildTextField(
+                          controller: siteController,
+                          isDarkMode: isDarkMode,
+                          prefixIcon: Icons.web_rounded,
+                          hintText: 'Ingresa el sitio web',
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Por favor ingresa un sitio web';
+                            }
+                            return null;
+                          },
+                    ),
+                    SizedBox(height: 16),
+                        
+                        // Campo de Usuario
+                        Text(
+                          'Usuario',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        _buildTextField(
+                          controller: usernameController,
+                          isDarkMode: isDarkMode,
+                          prefixIcon: Icons.person_rounded,
+                          hintText: 'Ingresa el nombre de usuario',
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Por favor ingresa un nombre de usuario';
+                            }
+                            return null;
+                          },
+                    ),
+                    SizedBox(height: 16),
+                        
+                        // Campo de Contraseña
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Contraseña',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: isDarkMode ? Colors.white : Colors.black87,
+                              ),
                   ),
-                  onPressed: () {
+                            // Botón para generar contraseña
+                            GestureDetector(
+                              onTap: () {
+                                String generatedPassword = generateRandomPassword();
                     setState(() {
-                                  showPassword = !showPassword;
+                                  passwordController.text = generatedPassword;
+                                  showPassword = true;
                                 });
                               },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.blue.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.auto_fix_high_rounded,
+                                      color: Colors.blue,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Generar',
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                            IconButton(
-                              icon: Icon(Icons.refresh, color: Theme.of(context).primaryColor),
-                              tooltip: 'Generar contraseña segura',
-                              onPressed: () {
-                                final newPassword = generateRandomPassword();
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        _buildTextField(
+                          controller: passwordController,
+                          isDarkMode: isDarkMode,
+                          prefixIcon: Icons.lock_rounded,
+                          hintText: 'Ingresa la contraseña',
+                          obscureText: !showPassword,
+                          suffix: GestureDetector(
+                            onTap: () {
                                 setState(() {
-                                  showPassword = true;
+                                showPassword = !showPassword;
                     });
                   },
-                ),
-              ],
-            ),
+                            child: Icon(
+                              showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                              color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                              size: 22,
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Por favor ingresa una contraseña';
+                            }
+                            return null;
+                          },
                       ),
+                        SizedBox(height: 16),
+                        
+                        // Campo de Notas
+                        Text(
+                          'Notas',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        _buildTextField(
+                          controller: notesController,
+                          isDarkMode: isDarkMode,
+                          prefixIcon: Icons.note_rounded,
+                          hintText: 'Ingresa notas adicionales (opcional)',
+                          maxLines: 3,
+                          obscureText: false,
                     ),
                     SizedBox(height: 24),
                     
                     // Selector de carpeta
+                        Text(
+                          'Carpeta',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 8),
                     InkWell(
                       onTap: () {
-                        // En lugar de cerrar y volver a abrir el diálogo, muestra el selector de carpetas
-                        // como otro diálogo modal que se abrirá encima del actual
                         _showFolderSelectorDialog(
                           context, 
                           selectedFolderIds, 
                           (newSelectedIds, newSelectedName) {
-                            // Actualizar los IDs y nombre seleccionados
                             setState(() {
                               selectedFolderIds = newSelectedIds;
                               selectedFolderName = newSelectedName;
@@ -2701,47 +3011,78 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Container(
                         padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
+                              color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+                                width: 1,
+                              ),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.folder_outlined, color: Theme.of(context).primaryColor),
+                                Icon(
+                                  Icons.folder_outlined, 
+                                  color: isDarkMode ? Colors.white70 : Colors.grey.shade700
+                                ),
                             SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 selectedFolderIds.isEmpty 
-                                  ? 'Seleccionar carpeta (opcional)' 
+                                      ? 'Sin carpeta (opcional)'
                                   : 'Carpeta: $selectedFolderName',
                                 style: TextStyle(
-                                  color: Colors.grey[700],
+                                      color: isDarkMode ? Colors.white : Colors.black87,
                                   fontSize: 15,
                                 ),
                               ),
                             ),
-                            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                          ],
-                        ),
-                      ),
+                                Icon(
+                                  Icons.arrow_forward_ios, 
+                                  size: 16, 
+                                  color: isDarkMode ? Colors.white70 : Colors.grey.shade700
                     ),
                   ],
                 ),
               ),
-                  actions: [
-                    TextButton(
+                        ),
+                        SizedBox(height: 30),
+                        
+                        // Botones de acción
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
                   onPressed: () {
                     Navigator.pop(context);
                   },
-                      child: Text('Cancelar'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  side: BorderSide(
+                                    color: isDarkMode ? Colors.white30 : Colors.grey.shade400,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Cancelar',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: isDarkMode ? Colors.white : Colors.black87,
+                                  ),
+                                ),
+                              ),
                     ),
-                ElevatedButton(
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: ElevatedButton(
                   onPressed: () {
                     // Validar campos
                     if (siteController.text.isEmpty || 
                         usernameController.text.isEmpty || 
                         passwordController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Por favor, completa todos los campos')),
+                                      SnackBar(content: Text('Por favor, completa los campos obligatorios')),
                       );
                       return;
                     }
@@ -2757,6 +3098,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       isFavorite: false,
                       isInTrash: false,
                       folderIds: selectedFolderIds,
+                                    notes: notesController.text,
                     );
                     
                     // Guardar contraseña
@@ -2768,9 +3110,31 @@ class _HomeScreenState extends State<HomeScreen> {
                       SnackBar(content: Text('Contraseña añadida correctamente')),
                     );
                   },
-                  child: Text('Guardar'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: Text(
+                                  'Guardar',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                 ),
               ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             );
           }
         );
@@ -4479,6 +4843,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final TextEditingController sitioController = TextEditingController();
     final TextEditingController usuarioController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
+    final TextEditingController notesController = TextEditingController();
     
     final formKey = GlobalKey<FormState>();
     bool showPassword = false;
@@ -4777,6 +5142,26 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 24),
                         
+                        // Campo de Notas
+                        Text(
+                          'Notas',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        _buildTextField(
+                          controller: notesController,
+                          isDarkMode: isDarkMode,
+                          prefixIcon: Icons.note_rounded,
+                          hintText: 'Ingresa notas adicionales (opcional)',
+                          maxLines: 3,
+                          obscureText: false,
+                        ),
+                        SizedBox(height: 24),
+                        
                         // Botones de acción
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -4806,6 +5191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     usuarioController.text,
                                     passwordController.text,
                                     isFavorite,
+                                    notes: notesController.text,
                                   );
                                   Navigator.of(context).pop();
                                 }
@@ -4842,9 +5228,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   
   // Método para guardar una nueva contraseña con opción de favorito
-  void _savePasswordWithFavorite(String sitio, String usuario, String password, bool isFavorite) {
+  void _savePasswordWithFavorite(String sitio, String usuario, String password, bool isFavorite, {String notes = ''}) {
     final User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
+    
     
     try {
       // Generar un ID único
@@ -4867,6 +5254,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'isFavorite': isFavorite,
         'isInTrash': false,
         'folderIds': <String>[],
+        'notes': notes,
       };
       
       // Guardar en Firebase

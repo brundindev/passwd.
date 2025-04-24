@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter/services.dart';
 import '../utils/snackbar_utils.dart';
 import 'package:email_validator/email_validator.dart';
 import 'dart:ui';
@@ -624,7 +623,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               colorScheme: ColorScheme.dark(
                 primary: Colors.blue,
                 secondary: Colors.blueAccent,
-                background: Colors.black,
                 surface: Colors.grey[900]!,
               ),
             )
@@ -635,7 +633,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               colorScheme: ColorScheme.light(
                 primary: Colors.blue,
                 secondary: Colors.blueAccent,
-                background: Colors.white,
                 surface: Colors.grey[100]!,
               ),
             ),
@@ -677,7 +674,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 builder: (context) {
                   return SingleChildScrollView(
                     child: Center(
-                      child: Container(
+                      child: SizedBox(
                         width: size.width > 600 ? 600 : size.width * 0.9,
                         height: size.height * 0.9,
                         child: Column(

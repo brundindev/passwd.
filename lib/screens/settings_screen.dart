@@ -40,22 +40,6 @@ class _SettingsScreenState extends State<SettingsScreen> with InactivityDetector
           _buildSettingsCard(
             children: [
               _buildSettingsTile(
-                title: 'Autenticación biométrica',
-                subtitle: 'Usar huella o Face ID para desbloquear',
-                leading: _buildIconContainer(
-                  icon: Icons.fingerprint,
-                  color: Colors.blue,
-                ),
-                trailing: Switch.adaptive(
-                  value: settings.useBiometrics,
-                  activeColor: Colors.blue,
-              onChanged: (value) {
-                    settings.setUseBiometrics(value);
-                  },
-                ),
-                divider: true,
-              ),
-              _buildSettingsTile(
                 title: 'Bloqueo automático',
                 subtitle: 'Cerrar sesión por inactividad',
                 leading: _buildIconContainer(
@@ -121,6 +105,48 @@ class _SettingsScreenState extends State<SettingsScreen> with InactivityDetector
           _buildSectionHeader('PREFERENCIAS'),
           _buildSettingsCard(
             children: [
+              MouseRegion(
+                cursor: SystemMouseCursors.forbidden,
+                child: AbsorbPointer(
+                  child: Opacity(
+                    opacity: 0.5,
+                    child: _buildSettingsTile(
+                      title: 'Autenticación biométrica',
+                      subtitle: 'Habilitar desbloqueo con huella o FaceID',
+                      leading: Stack(
+                        children: [
+                          _buildIconContainer(
+                            icon: Icons.fingerprint,
+                            color: Colors.grey,
+                          ),
+                          Positioned(
+                            right: -2,
+                            top: -2,
+                            child: Container(
+                              padding: EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 10,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      trailing: Switch.adaptive(
+                        value: false,
+                        activeColor: Colors.grey,
+                        onChanged: null,
+                      ),
+                      divider: true,
+                    ),
+                  ),
+                ),
+              ),
               MouseRegion(
                 cursor: SystemMouseCursors.forbidden,
                 child: AbsorbPointer(
