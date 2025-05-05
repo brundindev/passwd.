@@ -251,7 +251,7 @@ class _SettingsScreenState extends State<SettingsScreen> with InactivityDetector
             children: [
               _buildSettingsTile(
                 title: 'Versión',
-                subtitle: 'PASSWD v1.0',
+                subtitle: 'PASSWD v1.0.2-a',
                 leading: _buildIconContainer(
                   icon: Icons.info_outline,
                   color: Colors.grey,

@@ -10,7 +10,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:252776703139:android:7613a171dd9674d6564b16",
         "android_client_info": {
-          "package_name": "com.example.gestor_password"
+          "package_name": "com.example.passwd"
         }
       },
       "oauth_client": [
