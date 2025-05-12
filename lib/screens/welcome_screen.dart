@@ -206,7 +206,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        "v1.0.1",
+                        "v1.0.2-a",
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.7),
                           fontSize: 13,
