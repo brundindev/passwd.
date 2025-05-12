@@ -40,8 +40,22 @@ target 'Runner' do
     installer.pods_project.targets.each do |target|
       flutter_additional_macos_build_settings(target)
       
+      # Solucionar problemas con las cabeceras en GoogleUtilities
+      ['GoogleUtilities', 'FirebaseCore', 'FirebaseAuth', 'FirebaseFirestore', 'FirebaseStorage', 'FirebaseDatabase'].each do |firebase_target|
+        if target.name == firebase_target
+          target.build_configurations.each do |config|
+            # Desactivar completamente la advertencia de comillas
+            config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = "NO"
+            
+            # Cambiar las opciones de advertencia para ignorar completamente el problema
+            config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = "YES"
+            config.build_settings['OTHER_CFLAGS'] = '$(inherited) -w'
+          end
+        end
+      end
+      
       target.build_configurations.each do |config|
-        # Fix para los problemas de encabezados de Firebase
+        # Desactivar advertencia para todos los targets
         config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = "NO"
         
         # Asegurarse de que todos los targets usen macOS 10.15 (requerido por Firebase)
@@ -60,6 +74,11 @@ target 'Runner' do
           'FB_SONARKIT_ENABLED=1',
         ]
       end
+    end
+    
+    # Arreglar advertencias sobre scripts de fase de compilación
+    installer.pods_project.build_configurations.each do |config|
+      config.build_settings["EXCLUDED_ARCHS[sdk=iphonesimulator*]"] = "arm64"
     end
   end
 end

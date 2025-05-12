@@ -74,7 +74,7 @@ class _PasswordListItemState extends State<PasswordListItem> {
       ),
       child: Card(
         margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        color: Color(0xFF1E1E1E),
+        color: Color(0xFF1E1E1E).withOpacity(0.3),
         elevation: 8,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
+import 'dart:ui';
 import '../models/password.dart';
 import '../services/password_service.dart';
 import '../services/auth_service.dart';
@@ -12,6 +13,62 @@ import '../widgets/password_list_item.dart';
 import 'settings_screen.dart';
 import '../services/folder_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
+import 'folder_selector_screen.dart';
+
+// Constantes de diseño modernizado
+class AppDesign {
+  // Colores principales
+  static const Color primaryBlue = Color(0xFF3A7BF2);
+  static const Color secondaryBlue = Color(0xFF2E5ED9);
+  static const Color accentPurple = Color(0xFF8C61FF);
+  static const Color accentGreen = Color(0xFF1ED696);
+  static const Color accentOrange = Color(0xFFFF9950);
+  
+  // Colores para modo oscuro y claro
+  static const Color darkBackground = Color(0xFF121214);
+  static const Color darkSurface = Color(0xFF1E1E22);
+  static const Color darkCard = Color(0xFF2A2A30);
+  
+  static const Color lightBackground = Color(0xFFF8F9FD);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightCard = Color(0xFFF2F4F9);
+  
+  // Estilos de texto
+  static TextStyle headingStyle(bool isDark) => TextStyle(
+    fontWeight: FontWeight.bold,
+    fontSize: 24,
+    color: isDark ? Colors.white : Colors.black87,
+    letterSpacing: -0.5,
+  );
+  
+  static TextStyle subtitleStyle(bool isDark) => TextStyle(
+    fontWeight: FontWeight.w500,
+    fontSize: 16,
+    color: isDark ? Colors.white70 : Colors.black54,
+  );
+  
+  // Decoraciones
+  static BoxDecoration cardDecoration(bool isDark) => BoxDecoration(
+    color: isDark ? darkCard : lightCard,
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: [
+      BoxShadow(
+        color: isDark ? Colors.black26 : Colors.black.withOpacity(0.06),
+        blurRadius: 10,
+        offset: Offset(0, 4),
+      ),
+    ],
+    border: Border.all(
+      color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.withOpacity(0.1),
+      width: 1,
+    ),
+  );
+  
+  // Duración estándar de animaciones
+  static const Duration animDuration = Duration(milliseconds: 300);
+  static const Duration animDurationSlow = Duration(milliseconds: 500);
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -96,198 +153,385 @@ class _HomeScreenState extends State<HomeScreen> {
       // Wrap con Theme para aplicar el tema basado en _isDarkMode
       data: isDarkMode 
         ? ThemeData.dark().copyWith(
-            primaryColor: Colors.blue,
-            scaffoldBackgroundColor: Colors.black,
+            primaryColor: AppDesign.primaryBlue,
+            scaffoldBackgroundColor: AppDesign.darkBackground,
             appBarTheme: AppBarTheme(
-              backgroundColor: Colors.black,
+              backgroundColor: AppDesign.darkBackground,
               elevation: 0,
             ),
           )
         : ThemeData.light().copyWith(
-            primaryColor: Colors.blue,
-            scaffoldBackgroundColor: Colors.white,
+            primaryColor: AppDesign.primaryBlue,
+            scaffoldBackgroundColor: AppDesign.lightBackground,
             appBarTheme: AppBarTheme(
-              backgroundColor: Colors.white,
+              backgroundColor: AppDesign.lightBackground,
               elevation: 0,
             ),
           ),
       child: Scaffold(
-        backgroundColor: isDarkMode ? Colors.black : Color(0xFFF2F2F7),
-      appBar: AppBar(
-          toolbarHeight: 68,
-          backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          titleSpacing: 0,
-          leading: Builder(
-            builder: (context) => MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: IconButton(
-                  icon: Container(
-                    padding: EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.menu_rounded,
-                      color: isDarkMode ? Colors.white : Colors.black87,
-                      size: 22,
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(70),
+          child: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: AppBar(
+                backgroundColor: isDarkMode 
+                    ? Colors.black.withOpacity(0.6) 
+                    : Colors.white.withOpacity(0.7),
+                toolbarHeight: 70,
+                elevation: 0,
+                automaticallyImplyLeading: false,
+                titleSpacing: 0,
+                leading: Builder(
+                  builder: (context) => MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 12.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isDarkMode 
+                              ? Colors.grey.shade900.withOpacity(0.5) 
+                              : Colors.grey.shade200.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: Offset(0, 2),
+                              spreadRadius: -5,
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            CupertinoIcons.sidebar_left,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                            size: 22,
+                          ),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                          tooltip: 'Menú',
+                        ),
+                      ),
                     ),
                   ),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                  tooltip: 'Menú',
                 ),
+                title: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
+                actions: [
+                  // Botón de recarga de contraseñas
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Container(
+                      height: 40,
+                      width: 40,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppDesign.primaryBlue.withOpacity(isDarkMode ? 0.2 : 0.1),
+                            AppDesign.accentPurple.withOpacity(isDarkMode ? 0.15 : 0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: Offset(0, 2),
+                            spreadRadius: -5,
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          CupertinoIcons.arrow_clockwise,
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                          size: 20,
+                        ),
+                        tooltip: 'Recargar contraseñas',
+                        onPressed: () {
+                          _refreshPasswords();
+                        },
+                      ),
+                    ),
+                  ),
+                  
+                  // Selector de tema (claro/oscuro)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Container(
+                      height: 40,
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isDarkMode
+                              ? [Color(0xFF2C2C36), Color(0xFF1E1E28)]
+                              : [Color(0xFFF0F0F5), Color(0xFFE8E8F0)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: Offset(0, 2),
+                            spreadRadius: -5,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          // Icono de modo oscuro
+                          AnimatedOpacity(
+                            opacity: isDarkMode ? 1.0 : 0.4,
+                            duration: AppDesign.animDuration,
+                            child: Container(
+                              padding: EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: isDarkMode 
+                                    ? Color(0xFF35354D).withOpacity(0.7)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                CupertinoIcons.moon_stars_fill,
+                                color: isDarkMode ? Colors.white : Colors.black54,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          
+                          // Switch personalizado
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isDarkMode = !_isDarkMode;
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: AppDesign.animDuration,
+                                width: 40,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  color: isDarkMode 
+                                      ? Colors.grey.shade800 
+                                      : Colors.grey.shade300,
+                                ),
+                                child: Stack(
+                                  children: [
+                                    AnimatedPositioned(
+                                      duration: AppDesign.animDuration,
+                                      curve: Curves.easeOutBack,
+                                      left: isDarkMode ? 20 : 2,
+                                      top: 2,
+                                      child: Container(
+                                        width: 18,
+                                        height: 18,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: isDarkMode
+                                                ? [Colors.white, Colors.grey.shade300]
+                                                : [AppDesign.accentOrange, Colors.yellow],
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.15),
+                                              blurRadius: 8,
+                                              offset: Offset(0, 2),
+                                              spreadRadius: -2,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          
+                          // Icono de modo claro
+                          AnimatedOpacity(
+                            opacity: !isDarkMode ? 1.0 : 0.4,
+                            duration: AppDesign.animDuration,
+                            child: Container(
+                              padding: EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: !isDarkMode 
+                                    ? Colors.amber.withOpacity(0.1)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                CupertinoIcons.sun_max_fill,
+                                color: !isDarkMode ? Colors.amber : Colors.grey,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  // Perfil de usuario
+                  Padding(
+                    padding: const EdgeInsets.only(left: 6, right: 12),
+                    child: GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          backgroundColor: Colors.transparent,
+                          isScrollControlled: true,
+                          builder: (context) => _buildAppleStyleMenu(),
+                        );
+                      },
+                      child: Container(
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: isDarkMode
+                                ? [AppDesign.secondaryBlue.withOpacity(0.3), AppDesign.accentPurple.withOpacity(0.2)]
+                                : [AppDesign.secondaryBlue.withOpacity(0.1), AppDesign.accentPurple.withOpacity(0.05)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: Offset(0, 2),
+                              spreadRadius: -5,
+                            ),
+                          ],
+                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    AppDesign.primaryBlue,
+                                    AppDesign.secondaryBlue,
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppDesign.primaryBlue.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 2),
+                                    spreadRadius: -2,
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: isDarkMode ? Colors.white.withOpacity(0.2) : Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: currentUser.photoURL != null
+                                    ? Image.network(
+                                        currentUser.photoURL!,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Center(
+                                        child: Text(
+                                          currentUser.email?.substring(0, 1).toUpperCase() ?? 'U',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Text(
+                                currentUser.displayName?.split(" ")[0] ??
+                                    (currentUser.email?.split("@")[0] ?? 'Usuario'),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          title: Row(
+        ),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDarkMode
+                  ? [
+                      Color(0xFF0A1128), // Azul oscuro con tono neón
+                      Color(0xFF1A1B4B), // Azul-morado medio
+                      Color(0xFF1C1259), // Morado oscuro
+                    ]
+                  : [
+                      Colors.white, // Blanco puro
+                      Color(0xFFF8F9FD), // Blanco ligeramente azulado
+                      Color(0xFFF0F4FF), // Blanco con tono azul muy suave
+                    ],
+              stops: [0.0, 0.5, 1.0],
+            ),
+          ),
+          child: Stack(
             children: [
-              SizedBox(width: 4),
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 22,
-                  color: isDarkMode ? Colors.white : Colors.black,
-                ),
+              // Efectos de fondo neón
+              CustomPaint(
+                size: Size(MediaQuery.of(context).size.width, MediaQuery.of(context).size.height),
+                painter: NeonBackgroundPainter(isDarkMode: isDarkMode),
+              ),
+              
+              // Contenido principal
+              Stack(
+                children: [
+                  _buildMainContent(currentUser),
+                ],
               ),
             ],
           ),
-        actions: [
-            // Botón de recarga de contraseñas
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Container(
-                margin: EdgeInsets.symmetric(horizontal: 6),
-                child: IconButton(
-                  icon: Container(
-                    padding: EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.refresh_rounded,
-                      color: isDarkMode ? Colors.white : Colors.black87,
-                      size: 22,
-                    ),
-                  ),
-                  tooltip: 'Recargar contraseñas',
-                  onPressed: () {
-                    _refreshPasswords();
-                  },
-                ),
-              ),
-            ),
-            
-            // Selector de tema (claro/oscuro)
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Container(
-                margin: EdgeInsets.only(right: 10),
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                      color: isDarkMode ? Colors.yellow.shade600 : Colors.amber.shade600,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    // Switch para cambiar de modo claro a oscuro
-                    Transform.scale(
-                      scale: 0.8,
-                      child: Switch.adaptive(
-                        value: isDarkMode,
-                        onChanged: (value) {
-                          setState(() {
-                            _isDarkMode = value;
-                          });
-                        },
-                        activeColor: Colors.blue,
-                        activeTrackColor: Colors.blue.withOpacity(0.5),
-                        inactiveThumbColor: Colors.white,
-                        inactiveTrackColor: Colors.grey.shade300,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // Perfil de usuario
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    isScrollControlled: true,
-                    builder: (context) => _buildAppleStyleMenu(),
-                  );
-                },
-                child: Container(
-                  margin: EdgeInsets.only(right: 16),
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 15,
-                        backgroundColor: currentUser.photoURL != null 
-                            ? Colors.transparent 
-                            : Colors.blue.shade400,
-                        backgroundImage: currentUser.photoURL != null 
-                            ? NetworkImage(currentUser.photoURL!) 
-                            : null,
-                        child: currentUser.photoURL == null
-                            ? Text(
-                                currentUser.email?.substring(0, 1).toUpperCase() ?? 'U',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              )
-                            : null,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        currentUser.displayName?.split(" ")[0] ?? 
-                        (currentUser.email?.split("@")[0] ?? 'Usuario'),
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                        size: 18,
-          ),
-        ],
-      ),
-                ),
-              ),
-            ),
-          ],
         ),
         drawer: SizedBox(
           width: MediaQuery.of(context).size.width * 0.28, // Reducir ancho a aproximadamente 1/4 de la pantalla
@@ -331,13 +575,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           radius: 25,
                           backgroundColor: currentUser.photoURL != null 
                               ? Colors.transparent 
-                              : Colors.blue.shade400,
+                              : AppDesign.primaryBlue,
                           backgroundImage: currentUser.photoURL != null 
                               ? NetworkImage(currentUser.photoURL!) 
                               : null,
                           child: currentUser.photoURL == null
                               ? Text(
-                                  currentUser.email?.substring(0, 1).toUpperCase() ?? '',
+                                  currentUser.email?.substring(0, 1).toUpperCase() ?? 'U',
                                   style: TextStyle(
                                     fontSize: 22,
                                     color: Colors.white,
@@ -500,7 +744,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'PASSWD v1.0',
+                          'PASSWD v1.0.2-a',
                           style: TextStyle(
                             color: isDarkMode ? Colors.grey : Colors.grey.shade700,
                             fontSize: 9,
@@ -515,114 +759,146 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        body: Stack(
-          children: [
-            // Fondo con efectos visuales modernos estilo Apple
-            Positioned.fill(
-              child: isDarkMode
-                ? Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF121212),
-                          Color(0xFF1E1E1E),
-                          Color(0xFF101010),
-                        ],
-                      ),
-                    ),
-                    child: CustomPaint(
-                      painter: BackgroundPatternPainter(
-                        color: Colors.blue.withOpacity(0.08),
-                        patternSize: 20,
-                        strokeWidth: 0.5,
-                      ),
-                    ),
-                  )
-                : Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFFF5F5F7),
-                          Color(0xFFEBEBF0),
-                          Color(0xFFF2F2F7),
-                        ],
-                      ),
-                    ),
-                    child: CustomPaint(
-                      painter: BackgroundPatternPainter(
-                        color: Colors.blue.withOpacity(0.05),
-                        patternSize: 20,
-                        strokeWidth: 0.5,
-                      ),
+        floatingActionButton: _currentIndex != 2
+          ? Container(
+              height: 60,
+              width: 60,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppDesign.primaryBlue,
+                    AppDesign.secondaryBlue,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppDesign.primaryBlue.withOpacity(0.4),
+                    blurRadius: 15,
+                    offset: Offset(0, 5),
+                    spreadRadius: -3,
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(30),
+                  onTap: () {
+                    _showAddPasswordDialog(context);
+                  },
+                  child: Center(
+                    child: Icon(
+                      CupertinoIcons.add,
+                      size: 30,
+                      color: Colors.white,
                     ),
                   ),
-            ),
-            
-            // Contenido principal
-            _buildMainContent(currentUser),
-          ],
-        ),
-        floatingActionButton: _currentIndex != 2
-          ? FloatingActionButton(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              elevation: 4,
-              child: Icon(Icons.add, size: 28),
-              onPressed: () {
-                _addPassword();
-              },
+                ),
+              ),
             )
           : null,
-        bottomNavigationBar: Container(
-          height: 80,
-          color: Colors.transparent, // Completamente transparente
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNavItem(
-                icon: Icons.lock_outlined, 
-                activeIcon: Icons.lock, 
-                label: 'Contraseñas',
-                isSelected: _currentIndex == 0,
-                color: Colors.blue,
-                onTap: () {
-                  setState(() {
-                    _currentIndex = 0;
-                    _selectedFolderId = null;
-                  });
-                },
+        bottomNavigationBar: ClipRRect(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              height: 75, // Aumentado de 70 a 75
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: isDarkMode 
+                      ? [
+                          Colors.black.withOpacity(0.85),
+                          Colors.black.withOpacity(0.95),
+                        ]
+                      : [
+                          Colors.white.withOpacity(0.85),
+                          Colors.white.withOpacity(0.95),
+                        ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: Offset(0, -2),
+                    spreadRadius: -5,
+                  ),
+                ],
+                border: Border(
+                  top: BorderSide(
+                    color: isDarkMode 
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.grey.withOpacity(0.15),
+                    width: 0.5,
+                  ),
+                ),
               ),
-              _buildNavItem(
-                icon: Icons.star_border_rounded, 
-                activeIcon: Icons.star_rounded, 
-                label: 'Favoritos',
-                isSelected: _currentIndex == 1,
-                color: Colors.amber,
-                onTap: () {
-                  setState(() {
-                    _currentIndex = 1;
-                    _selectedFolderId = null;
-                  });
-                },
+              child: SafeArea(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: _buildNavItem(
+                          icon: Icons.lock_outlined, 
+                          activeIcon: Icons.lock, 
+                          label: 'Contraseñas',
+                          isSelected: _currentIndex == 0,
+                          color: Colors.blue,
+                          onTap: () {
+                            setState(() {
+                              _currentIndex = 0;
+                              _selectedFolderId = null;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: _buildNavItem(
+                          icon: Icons.star_border_rounded, 
+                          activeIcon: Icons.star_rounded, 
+                          label: 'Favoritos',
+                          isSelected: _currentIndex == 1,
+                          color: Colors.amber,
+                          onTap: () {
+                            setState(() {
+                              _currentIndex = 1;
+                              _selectedFolderId = null;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: _buildNavItem(
+                          icon: Icons.delete_outline_rounded, 
+                          activeIcon: Icons.delete_rounded, 
+                          label: 'Papelera',
+                          isSelected: _currentIndex == 2,
+                          color: Colors.red,
+                          onTap: () {
+                            setState(() {
+                              _currentIndex = 2;
+                              _selectedFolderId = null;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              _buildNavItem(
-                icon: Icons.delete_outline_rounded, 
-                activeIcon: Icons.delete_rounded, 
-                label: 'Papelera',
-                isSelected: _currentIndex == 2,
-                color: Colors.red,
-                onTap: () {
-                  setState(() {
-                    _currentIndex = 2;
-                    _selectedFolderId = null;
-                  });
-                },
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -990,7 +1266,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   
   Widget _buildContent() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isDarkMode = _isDarkMode;
     
     // Si todavía estamos verificando la autenticación, mostrar una pantalla de carga
     if (_isLoadingAuth) {
@@ -998,21 +1274,47 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 50,
-              height: 50,
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                strokeWidth: 3,
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: isDarkMode ? AppDesign.darkCard : AppDesign.lightCard,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.1),
+                    blurRadius: 15,
+                    offset: Offset(0, 5),
+                    spreadRadius: -5,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: SizedBox(
+                  width: 50,
+                  height: 50,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(AppDesign.primaryBlue),
+                    strokeWidth: 3,
+                  ),
+                ),
               ),
             ),
-            SizedBox(height: 24),
+            SizedBox(height: 32),
             Text(
               "Cargando datos del usuario...",
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+                color: isDarkMode ? Colors.white : Colors.black87,
+                fontSize: 18,
                 fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              "Espera un momento, por favor",
+              style: TextStyle(
+                color: isDarkMode ? Colors.white.withOpacity(0.6) : Colors.black54,
+                fontSize: 16,
               ),
             ),
           ],
@@ -1028,39 +1330,82 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: EdgeInsets.all(16),
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.2),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.red.withOpacity(0.7),
+                    Colors.red.withOpacity(0.3),
+                  ],
+                ),
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                    spreadRadius: -5,
+                  ),
+                ],
               ),
               child: Icon(
-                Icons.error_outline_rounded,
+                CupertinoIcons.exclamationmark_shield_fill,
                 size: 50,
-                color: Colors.red,
-              ),
-            ),
-            SizedBox(height: 24),
-            Text(
-              "No se ha podido verificar tu sesión",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
+            SizedBox(height: 32),
+            Text(
+              "No se ha podido verificar tu sesión",
+              style: AppDesign.headingStyle(isDarkMode),
+            ),
             SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pushReplacementNamed('/welcome');
-              },
-              icon: Icon(Icons.login_rounded),
-              label: Text("Volver al inicio"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                "Es necesario iniciar sesión para acceder a tus contraseñas seguras",
+                textAlign: TextAlign.center,
+                style: AppDesign.subtitleStyle(isDarkMode),
+              ),
+            ),
+            SizedBox(height: 32),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppDesign.primaryBlue,
+                    AppDesign.secondaryBlue,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppDesign.primaryBlue.withOpacity(0.4),
+                    blurRadius: 15,
+                    offset: Offset(0, 8),
+                    spreadRadius: -5,
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pushReplacementNamed('/welcome');
+                },
+                icon: Icon(CupertinoIcons.arrow_right),
+                label: Text("Volver al inicio"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
             ),
@@ -1071,88 +1416,160 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Si ya hemos confirmado que hay un usuario autenticado, cargar la pantalla normal
     print("Construyendo HomeScreen para usuario: ${currentUser.uid}");
-    final passwordService = Provider.of<PasswordService>(context);
-    final authService = Provider.of<AuthService>(context, listen: false);
-
+    
     return StreamBuilder<List<Password>>(
       stream: _getPasswordStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                    strokeWidth: 3,
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? AppDesign.darkCard : AppDesign.lightCard,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.1),
+                        blurRadius: 15,
+                        offset: Offset(0, 5),
+                        spreadRadius: -5,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppDesign.primaryBlue),
+                        strokeWidth: 3,
+                      ),
+                    ),
                   ),
                 ),
-                SizedBox(height: 24),
+                SizedBox(height: 32),
                 Text(
                   "Cargando contraseñas...",
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                    fontSize: 18,
                     fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    "Tus datos están protegidos con cifrado de alta seguridad",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white.withOpacity(0.6) : Colors.black54,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ],
             ),
           );
-          }
+        }
           
-          if (snapshot.hasError) {
-            return Center(
+        if (snapshot.hasError) {
+          return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: EdgeInsets.all(16),
+                  width: 100,
+                  height: 100,
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.2),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.orange.withOpacity(0.8),
+                        Colors.red.withOpacity(0.5),
+                      ],
+                    ),
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.3),
+                        blurRadius: 20,
+                        offset: Offset(0, 10),
+                        spreadRadius: -5,
+                      ),
+                    ],
                   ),
                   child: Icon(
-                    Icons.error_outline_rounded,
-                    size: 40,
-                    color: Colors.red,
-                  ),
-                ),
-                SizedBox(height: 24),
-                Text(
-                  "Error al cargar las contraseñas",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    CupertinoIcons.exclamationmark_triangle_fill,
+                    size: 50,
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                SizedBox(height: 32),
+                Text(
+                  "Error al cargar las contraseñas",
+                  style: AppDesign.headingStyle(isDarkMode),
+                ),
+                SizedBox(height: 16),
+                Container(
+                  margin: EdgeInsets.symmetric(horizontal: 32),
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.grey.shade900.withOpacity(0.7) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDarkMode ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
                   child: Text(
                     snapshot.error.toString(),
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
+                      color: isDarkMode ? Colors.white.withOpacity(0.7) : Colors.black54,
                       fontSize: 14,
+                      fontFamily: 'monospace',
                     ),
                   ),
                 ),
-                SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: _refreshPasswords,
-                  icon: Icon(Icons.refresh_rounded),
-                  label: Text("Intentar de nuevo"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                SizedBox(height: 32),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppDesign.primaryBlue,
+                        AppDesign.secondaryBlue,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppDesign.primaryBlue.withOpacity(0.4),
+                        blurRadius: 15,
+                        offset: Offset(0, 8),
+                        spreadRadius: -5,
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton.icon(
+                    onPressed: _refreshPasswords,
+                    icon: Icon(CupertinoIcons.refresh),
+                    label: Text("Intentar de nuevo"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
@@ -1166,98 +1583,126 @@ class _HomeScreenState extends State<HomeScreen> {
         // Aplicar filtro de búsqueda
         passwords = _filterPasswords(passwords);
           
-          if (passwords.isEmpty) {
+        if (passwords.isEmpty) {
           IconData iconData;
           String message;
           String description;
           
           if (_currentIndex == 1) {
-            iconData = Icons.star_border_rounded;
+            iconData = CupertinoIcons.star;
             message = "No tienes contraseñas favoritas";
             description = "Marca como favorito los accesos que uses con frecuencia para acceder rápidamente";
           } else if (_currentIndex == 2) {
-            iconData = Icons.delete_outline_rounded;
+            iconData = CupertinoIcons.trash;
             message = "No hay elementos en la papelera";
             description = "Aquí aparecerán las contraseñas que has eliminado temporalmente";
           } else if (_searchQuery.isNotEmpty) {
-            iconData = Icons.search_off_rounded;
+            iconData = CupertinoIcons.search;
             message = "No se encontraron resultados";
             description = "No hay coincidencias para \"$_searchQuery\"";
           } else if (_selectedFolderId != null) {
-            iconData = Icons.folder_outlined;
+            iconData = CupertinoIcons.folder;
             message = "Esta carpeta está vacía";
             description = "Añade contraseñas para organizarlas mejor";
           } else {
-            iconData = Icons.password_rounded;
+            iconData = CupertinoIcons.lock;
             message = "No tienes contraseñas guardadas";
             description = "Empieza añadiendo tu primera contraseña";
           }
           
-            return Center(
+          return Center(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(32),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: 110,
+                    height: 110,
                     decoration: BoxDecoration(
-                      color: isDarkMode 
-                          ? Colors.grey.shade800.withOpacity(0.5) 
-                          : Colors.grey.shade200.withOpacity(0.8),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDarkMode
+                            ? [Colors.grey.shade800, Colors.grey.shade900]
+                            : [Colors.grey.shade200, Colors.grey.shade300],
+                      ),
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDarkMode
+                              ? Colors.black.withOpacity(0.3)
+                              : Colors.grey.withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: Offset(0, 10),
+                          spreadRadius: -5,
+                        ),
+                      ],
                     ),
                     child: Icon(
                       iconData, 
-                      size: 40, 
-                      color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                      size: 50, 
+                      color: isDarkMode ? Colors.white.withOpacity(0.7) : Colors.grey.shade700,
                     ),
                   ),
-                  SizedBox(height: 24),
+                  SizedBox(height: 32),
                   Text(
                     message,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                    style: AppDesign.headingStyle(isDarkMode),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 8),
+                  SizedBox(height: 16),
                   Text(
                     description,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.8),
-                    ),
+                    style: AppDesign.subtitleStyle(isDarkMode),
                     textAlign: TextAlign.center,
                   ),
                   if (_currentIndex == 0 && _searchQuery.isEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 32.0),
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          _showAddPasswordDialog(context);
-                        },
-                        icon: Icon(Icons.add_rounded),
-                        label: Text("Añadir contraseña"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      padding: const EdgeInsets.only(top: 40),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppDesign.primaryBlue,
+                              AppDesign.secondaryBlue,
+                            ],
                           ),
-                          elevation: 0,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppDesign.primaryBlue.withOpacity(0.4),
+                              blurRadius: 15,
+                              offset: Offset(0, 8),
+                              spreadRadius: -5,
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            _showAddPasswordDialog(context);
+                          },
+                          icon: Icon(CupertinoIcons.plus),
+                          label: Text("Añadir contraseña"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: 30, vertical: 16),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
                         ),
                       ),
-                  ),
+                    ),
                 ],
               ),
-              ),
-            );
-          }
+            ),
+          );
+        }
           
         return Padding(
           padding: const EdgeInsets.only(top: 8),
@@ -1269,12 +1714,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 scrollbars: false,
               ),
               child: ListView.separated(
-                padding: EdgeInsets.only(top: 8, bottom: 16, left: 16, right: 16),
-            itemCount: passwords.length,
+                padding: EdgeInsets.only(top: 8, bottom: 24, left: 16, right: 16),
+                itemCount: passwords.length,
                 separatorBuilder: (context, index) => SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final password = passwords[index];
-                  return _buildPasswordItem(password);
+                itemBuilder: (context, index) {
+                  final password = passwords[index];
+                  
+                  // Aplicar efecto de animación escalonada a cada elemento
+                  return TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0.95, end: 1.0),
+                    curve: Curves.easeOutCubic,
+                    duration: AppDesign.animDuration,
+                    builder: (context, value, child) {
+                      return Transform.scale(
+                        scale: value,
+                        child: Opacity(
+                          opacity: value,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: _buildPasswordItem(password),
+                  );
                 },
               ),
             ),
@@ -1285,15 +1746,73 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   
   Widget _buildPasswordItem(Password password) {
-    return PasswordListItem(
-      password: password,
-      onToggleFavorite: () => _toggleFavorite(password),
-      onDelete: () => _deletePassword(password),
-      onView: () => _showPasswordDetails(password),
-      onEdit: () => _editPassword(password),
-      onAddToFolder: () => _showAddToFolderDialog(password),
-      isInTrash: _currentIndex == 2,
-      onRestore: _currentIndex == 2 ? () => _restorePassword(password) : null,
+    final isDarkMode = _isDarkMode;
+    String domain = password.sitio.toLowerCase();
+    
+    // Extraer dominio para el icono
+    if (domain.startsWith('http://')) {
+      domain = domain.substring(7);
+    } else if (domain.startsWith('https://')) {
+      domain = domain.substring(8);
+    }
+    if (domain.startsWith('www.')) {
+      domain = domain.substring(4);
+    }
+    int slashIndex = domain.indexOf('/');
+    if (slashIndex != -1) {
+      domain = domain.substring(0, slashIndex);
+    }
+    
+    // Determinar color para el dominio
+    Color domainColor = _generateColorFromName(domain);
+    
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode
+              ? [
+                  AppDesign.secondaryBlue.withOpacity(0.25), 
+                  AppDesign.accentPurple.withOpacity(0.2)
+                ]
+              : [
+                  AppDesign.secondaryBlue.withOpacity(0.15), 
+                  AppDesign.accentPurple.withOpacity(0.08)
+                ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDarkMode 
+              ? Colors.white.withOpacity(0.1) 
+              : Colors.grey.withOpacity(0.15),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+            spreadRadius: -5,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: PasswordListItem(
+            password: password,
+            onToggleFavorite: () => _toggleFavorite(password),
+            onDelete: () => _deletePassword(password),
+            onView: () => _showPasswordDetails(password),
+            onEdit: () => _editPassword(password),
+            onAddToFolder: () => _showAddToFolderDialog(password),
+            isInTrash: _currentIndex == 2,
+            onRestore: _currentIndex == 2 ? () => _restorePassword(password) : null,
+          ),
+        ),
+      ),
     );
   }
 
@@ -3151,11 +3670,21 @@ class _HomeScreenState extends State<HomeScreen> {
     List<String> selectedFolderIds = List.from(currentSelectedIds);
     String selectedFolderName = '';
     
+    // Obtener el modo actual (claro/oscuro)
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     showDialog(
                 context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Seleccionar carpeta'),
+          backgroundColor: isDarkMode ? Color(0xFF2C2C2E) : Colors.white,
+          title: Text(
+            'Seleccionar carpeta',
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           content: SizedBox(
             width: double.maxFinite,
             height: 300,
@@ -3163,11 +3692,18 @@ class _HomeScreenState extends State<HomeScreen> {
               future: _getFolders(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
+                  return Center(child: CircularProgressIndicator(
+                    color: isDarkMode ? Colors.white70 : Colors.blue,
+                  ));
                 }
                 
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error al cargar carpetas'));
+                  return Center(child: Text(
+                    'Error al cargar carpetas',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black87,
+                    ),
+                  ));
                 }
                 
                 final folders = snapshot.data ?? [];
@@ -3177,11 +3713,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.folder_outlined, size: 48, color: Colors.grey),
+                        Icon(
+                          Icons.folder_outlined, 
+                          size: 48, 
+                          color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600
+                        ),
                         SizedBox(height: 16),
                         Text(
                           'No tienes carpetas creadas',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
                         ),
                         SizedBox(height: 8),
                         ElevatedButton(
@@ -3190,6 +3733,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             Navigator.pushNamed(context, '/folders');
                           },
                           child: Text('Crear carpeta'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
                       ],
                     ),
@@ -3206,17 +3753,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
+                              color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               Icons.folder_off,
-                              color: Colors.grey[600],
+                              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                             ),
                           ),
                           title: Text(
                             'Sin carpeta',
-                            style: TextStyle(color: Colors.grey[700]),
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black87,
+                              fontWeight: selectedFolderIds.isEmpty ? FontWeight.bold : FontWeight.normal,
+                            ),
                           ),
                           selected: selectedFolderIds.isEmpty,
                           trailing: selectedFolderIds.isEmpty
@@ -3229,7 +3779,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             });
                           },
                         ),
-                        Divider(),
+                        Divider(
+                          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                        ),
                         
                         // Lista de carpetas
                         ...folders.map((folder) {
@@ -3263,7 +3815,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             title: Text(
                               folder.name,
                               style: TextStyle(
-                                color: Colors.grey[700],
+                                color: isDarkMode ? Colors.white : Colors.black87,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
@@ -3290,18 +3842,27 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
-                  actions: [
-                    TextButton(
+          actions: [
+            TextButton(
               onPressed: () {
                 Navigator.pop(context);
               },
-                      child: Text('Cancelar'),
-                    ),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+                ),
+              ),
+            ),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
                 onSelect(selectedFolderIds, selectedFolderName);
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
               child: Text('Aceptar'),
             ),
           ],
@@ -3479,293 +4040,39 @@ class _HomeScreenState extends State<HomeScreen> {
   
   // Mostrar el menú de selección de carpetas
   void _showFolderSelectionMenu(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isDarkMode = _isDarkMode;
     
-    // Obtener la lista de contraseñas para el conteo
-    final passwordService = Provider.of<PasswordService>(context, listen: false);
-    passwordService.getPasswords().first.then((passwords) {
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (context) {
-          return Container(
-            decoration: BoxDecoration(
-              color: isDarkMode ? Color(0xFF2C2C2E) : Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: Offset(0, -1),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Indicador de arrastre
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: EdgeInsets.only(top: 12, bottom: 12),
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Seleccionar carpeta',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.grey.shade800,
-                        ),
-                      ),
-                      Spacer(),
-                      IconButton(
-                        icon: Icon(
-                          Icons.close_rounded,
-                          color: isDarkMode ? Colors.white : Colors.grey.shade700,
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ),
-                Divider(height: 1),
-                FutureBuilder(
-                  future: _getFolders(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
-                    }
-                    
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Text(
-                            'Error al cargar las carpetas',
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.grey.shade700,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                    
-                    final folders = snapshot.data as List<dynamic>;
-                    
-                    if (folders.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: isDarkMode 
-                                  ? Colors.grey.shade800.withOpacity(0.5)
-                                  : Colors.grey.shade100,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.folder_outlined,
-                                size: 40,
-                                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade500,
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'No tienes carpetas creadas',
-                              style: TextStyle(
-                                fontSize: 16, 
-                                fontWeight: FontWeight.bold,
-                                color: isDarkMode ? Colors.white : Colors.grey.shade700,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Crea carpetas para organizar tus contraseñas',
-                              style: TextStyle(
-                                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
-                              ),
-                            ),
-                            SizedBox(height: 20),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                Navigator.pushNamed(context, '/folders');
-                              },
-                              icon: Icon(Icons.add_rounded),
-                              label: Text('Crear carpeta'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 20),
-                          ],
-                        ),
-                      );
-                    }
-                    
-                    return Expanded(
-                      child: ListView(
-                        shrinkWrap: true,
-                        children: [
-                          // Opción para mostrar todas las contraseñas
-                          _buildFolderOption(
-                            icon: Icons.home_rounded,
-                            iconColor: Colors.blue,
-                            title: 'Todas las contraseñas',
-                            isSelected: _selectedFolderId == null,
-                            onTap: () {
-                              setState(() {
-                                _selectedFolderId = null;
-                              });
-                              Navigator.pop(context);
-                            },
-                          ),
-                          Divider(height: 1),
-                          
-                          // Lista de carpetas
-                          ...folders.map<Widget>((folder) {
-                            // Convertir color hexadecimal a Color de Flutter
-                            Color folderColor;
-                            try {
-                              final buffer = StringBuffer();
-                              buffer.write('ff'); // Opacidad completa
-                              buffer.write(folder.color.replaceFirst('#', ''));
-                              folderColor = Color(int.parse(buffer.toString(), radix: 16));
-                            } catch (e) {
-                              // Usar color predeterminado si hay error
-                              folderColor = Colors.blue;
-                            }
-                            
-                            // Contar las contraseñas que pertenecen a esta carpeta
-                            final passwordCount = passwords.where((p) => p.folderIds.contains(folder.id)).length;
-                            
-                            return _buildFolderOption(
-                              icon: Icons.folder_rounded,
-                              iconColor: folderColor,
-                              title: folder.name,
-                              subtitle: '$passwordCount contraseña${passwordCount != 1 ? 's' : ''}',
-                              isSelected: _selectedFolderId == folder.id,
-                              onTap: () {
-                                setState(() {
-                                  _selectedFolderId = folder.id;
-                                });
-                                Navigator.pop(context);
-                              },
-                            );
-                          }),
-                          
-                          Divider(height: 1),
-                          
-                          // Opción para crear nueva carpeta
-                          _buildFolderOption(
-                            icon: Icons.add_rounded,
-                            iconColor: Colors.green,
-                            title: 'Crear nueva carpeta',
-                            onTap: () {
-                              Navigator.pop(context);
-                              Navigator.pushNamed(context, '/folders');
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    });
-  }
-  
-  // Construir opción de carpeta
-  Widget _buildFolderOption({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    String? subtitle,
-    bool isSelected = false,
-    required VoidCallback onTap,
-  }) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.15),
-                shape: BoxShape.circle,
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.8,
+          decoration: BoxDecoration(
+            color: isDarkMode ? Color(0xFF2C2C2E) : Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: Offset(0, -1),
               ),
-              child: Icon(
-                icon,
-                color: iconColor,
-                size: 22,
-              ),
+            ],
+          ),
+          child: SafeArea(
+            child: FolderSelectorScreen(
+              selectedFolderId: _selectedFolderId,
+              onChange: (folderId) {
+                setState(() {
+                  _selectedFolderId = folderId;
+                });
+                Navigator.pop(context);
+              },
             ),
-            SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                      color: isDarkMode ? Colors.white : Colors.grey.shade800,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              Icon(
-                Icons.check_circle_rounded,
-                color: Colors.green,
-                size: 22,
-              ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
   
@@ -4325,143 +4632,217 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Método para construir el contenido principal
   Widget _buildMainContent(User currentUser) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isDarkMode = _isDarkMode;
     
     return SafeArea(
       child: Column(
         children: [
-          // Barra de búsqueda
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  if (!isDarkMode)
+          // Barra de búsqueda con efecto de profundidad
+          AnimatedOpacity(
+            opacity: 1.0,
+            duration: AppDesign.animDuration,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDarkMode
+                        ? [Color(0xFF1A1A24), Color(0xFF252532)]
+                        : [Color(0xFFF0F0F8), Color(0xFFE8E8F0)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+                      color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.08),
+                      blurRadius: 15,
+                      offset: Offset(0, 5),
+                      spreadRadius: -5,
                     ),
-                ]
-              ),
-              child: TextField(
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value.toLowerCase();
-                  });
-                },
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.black87,
+                  ],
+                  border: Border.all(
+                    color: isDarkMode
+                        ? Colors.white.withOpacity(0.07)
+                        : Colors.grey.withOpacity(0.12),
+                    width: 1,
+                  ),
                 ),
-                decoration: InputDecoration(
-                  hintText: 'Buscar contraseñas',
-                  hintStyle: TextStyle(
-                    color: isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
-                    fontSize: 16,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: TextField(
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value.toLowerCase();
+                        });
+                      },
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                        fontSize: 16,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar contraseñas',
+                        hintStyle: TextStyle(
+                          color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                          fontSize: 16,
+                        ),
+                        prefixIcon: Container(
+                          padding: EdgeInsets.all(12),
+                          child: Icon(
+                            CupertinoIcons.search,
+                            color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                            size: 20,
+                          ),
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                },
+                                icon: Icon(
+                                  CupertinoIcons.clear_circled_solid,
+                                  color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                                  size: 20,
+                                ),
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                        filled: true,
+                        fillColor: Colors.transparent,
+                      ),
+                    ),
                   ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    color: isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
             ),
           ),
           
-          // Selector de carpetas
+          // Selector de carpetas con gradiente
           if (_currentIndex == 0) // Solo mostrar en la vista de todas las contraseñas
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: FutureBuilder(
-                future: _getFolders(),
-                builder: (context, snapshot) {
-                  String folderText = 'Seleccionar carpeta';
-                  
-                  if (_selectedFolderId != null) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      folderText = 'Cargando carpeta...';
-                    } else if (snapshot.hasData) {
-                      final folders = snapshot.data as List;
-                      for (var folder in folders) {
-                        if (folder.id == _selectedFolderId) {
-                          folderText = 'Carpeta: ${folder.name}';
-                          break;
+            AnimatedOpacity(
+              opacity: 1.0,
+              duration: AppDesign.animDuration,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: FutureBuilder(
+                  future: _getFolders(),
+                  builder: (context, snapshot) {
+                    String folderText = 'Seleccionar carpeta';
+                    
+                    if (_selectedFolderId != null) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        folderText = 'Cargando carpeta...';
+                      } else if (snapshot.hasData) {
+                        final folders = snapshot.data as List;
+                        for (var folder in folders) {
+                          if (folder.id == _selectedFolderId) {
+                            folderText = 'Carpeta: ${folder.name}';
+                            break;
+                          }
                         }
+                      } else {
+                        folderText = 'Carpeta seleccionada';
                       }
-                    } else {
-                      folderText = 'Carpeta seleccionada';
                     }
-                  }
-                  
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        if (!isDarkMode)
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                      ]
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () {
-                          _showFolderSelectionMenu(context);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: isDarkMode 
-                                    ? Colors.blue.withOpacity(0.2) 
-                                    : Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(
-                                  Icons.folder_outlined,
-                                  color: Colors.blue,
-                                  size: 20,
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  folderText,
-                                  style: TextStyle(
-                                    color: isDarkMode ? Colors.white : Colors.grey[800],
-                                    fontSize: 16,
+                    
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isDarkMode
+                              ? [AppDesign.primaryBlue.withOpacity(0.2), AppDesign.accentPurple.withOpacity(0.15)]
+                              : [AppDesign.primaryBlue.withOpacity(0.1), AppDesign.accentPurple.withOpacity(0.05)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          if (!isDarkMode)
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 15,
+                              offset: Offset(0, 5),
+                              spreadRadius: -5,
+                            ),
+                        ],
+                        border: Border.all(
+                          color: isDarkMode 
+                              ? Colors.white.withOpacity(0.1) 
+                              : Colors.grey.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () {
+                            _showFolderSelectionMenu(context);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode 
+                                      ? AppDesign.primaryBlue.withOpacity(0.2) 
+                                      : AppDesign.primaryBlue.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppDesign.primaryBlue.withOpacity(0.2),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 2),
+                                        spreadRadius: -2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    CupertinoIcons.folder,
+                                    color: AppDesign.primaryBlue,
+                                    size: 20,
                                   ),
                                 ),
-                              ),
-                              Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
-                              ),
-                            ],
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    folderText,
+                                    style: TextStyle(
+                                      color: isDarkMode ? Colors.white : Colors.grey[800],
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  CupertinoIcons.chevron_down,
+                                  color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+                                  size: 18,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           
           // Contenido principal
           Expanded(
-            child: _buildContent(),
+            child: AnimatedOpacity(
+              opacity: 1.0,
+              duration: AppDesign.animDurationSlow,
+              child: _buildContent(),
+            ),
           ),
         ],
       ),
@@ -5332,31 +5713,54 @@ class _HomeScreenState extends State<HomeScreen> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
+        child: AnimatedContainer(
+          duration: AppDesign.animDuration,
+          curve: Curves.easeOutCubic,
+          width: double.infinity,  // Cambiado de 75 a ancho dinámico
+          height: 40, // Reducido de 42 a 40
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2), // Reducido vertical de 3 a 2
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? (isDarkMode ? color.withOpacity(0.25) : color.withOpacity(0.15))
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(isDarkMode ? 0.4 : 0.3),
+                      blurRadius: 10,
+                      offset: Offset(0, 2),
+                      spreadRadius: -2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
                 isSelected ? activeIcon : icon,
-                color: isSelected ? color : isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
-                size: isSelected ? 26 : 24,
+                color: isSelected 
+                    ? color 
+                    : isDarkMode 
+                        ? Colors.grey.shade400
+                        : Colors.grey.shade600,
+                size: isSelected ? 20 : 18, // Reducido de 22/20 a 20/18
               ),
-            ),
-            SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? color : isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              SizedBox(height: 1), // Reducido de 2 a 1
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? color : isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                  fontSize: 9, // Reducido de 10 a 9
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                ),
+                overflow: TextOverflow.visible,
+                maxLines: 1,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -5428,8 +5832,73 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
 
+  // Construir opción de carpeta para el diálogo de añadir a carpeta
+  Widget _buildFolderOption({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? subtitle,
+    bool isSelected = false,
+    required VoidCallback onTap,
+  }) {
+    final isDarkMode = _isDarkMode;
+    
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: iconColor,
+                size: 22,
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle_rounded,
+                color: Colors.green,
+                size: 22,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 // Clase para dibujar el patrón de fondo estilo Apple
 class BackgroundPatternPainter extends CustomPainter {
   final Color color;
@@ -5444,27 +5913,63 @@ class BackgroundPatternPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Patrón de puntos principal
+    final double halfWidth = size.width / 2;
+    final double halfHeight = size.height / 2;
+    
+    // Pintar gradiente de fondo
+    final Paint gradientPaint = Paint();
+    final Rect rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    
+    gradientPaint.shader = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        color.withOpacity(0.1),
+        color.withOpacity(0.05),
+        color.withOpacity(0.02),
+      ],
+      stops: [0.0, 0.5, 1.0],
+    ).createShader(rect);
+    
+    canvas.drawRect(rect, gradientPaint);
+    
+    // Pintar patrón de puntos principal con efecto de profundidad
     final dotPaint = Paint()
       ..color = color
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.fill;
 
-    // Dibujar grid de puntos principal
+    // Dibujar grid de puntos con tallas variables para efecto de profundidad
     for (double x = 0; x < size.width; x += patternSize) {
       for (double y = 0; y < size.height; y += patternSize) {
-        // Alternar tamaños de puntos para crear interés visual
-        if ((x / patternSize).floor() % 2 == (y / patternSize).floor() % 2) {
-          canvas.drawCircle(Offset(x, y), 1.2, dotPaint);
-        } else {
-          canvas.drawCircle(Offset(x, y), 0.8, dotPaint);
+        // Calcular distancia al centro para efecto de profundidad
+        final double distanceToCenter = _distanceToPoint(
+          x, y, halfWidth, halfHeight
+        );
+        final double maxDistance = _distanceToPoint(
+          0, 0, halfWidth, halfHeight
+        );
+        
+        // Reducir el tamaño de los puntos conforme se alejan del centro
+        final double sizeFactor = 1.0 - (distanceToCenter / maxDistance) * 0.7;
+        final double pointSize = ((x / patternSize).floor() % 3 == (y / patternSize).floor() % 3)
+            ? 1.5 * sizeFactor 
+            : 0.8 * sizeFactor;
+        
+        // Solo dibujar puntos con tamaño significativo
+        if (pointSize > 0.3) {
+          dotPaint.color = color.withOpacity(0.2 * sizeFactor);
+          canvas.drawCircle(Offset(x, y), pointSize, dotPaint);
         }
       }
     }
 
+    // Dibujar formas geométricas de fondo para añadir interés visual
+    _drawBackgroundShapes(canvas, size, color);
+    
     // Dibujar líneas de cuadrícula muy sutiles
     final gridPaint = Paint()
-      ..color = color.withOpacity(0.15)
+      ..color = color.withOpacity(0.07)
       ..strokeWidth = 0.5
       ..style = PaintingStyle.stroke;
 
@@ -5477,27 +5982,227 @@ class BackgroundPatternPainter extends CustomPainter {
     for (double x = patternSize * 4; x < size.width; x += patternSize * 8) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
     }
-
-    // Dibujar algunos círculos grandes de fondo para añadir profundidad
-    final bgCirclePaint = Paint()
-      ..color = color.withOpacity(0.04)
+  }
+  
+  // Método auxiliar para calcular la distancia entre dos puntos
+  double _distanceToPoint(double x1, double y1, double x2, double y2) {
+    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
+  }
+  
+  // Método para dibujar formas geométricas decorativas
+  void _drawBackgroundShapes(Canvas canvas, Size size, Color baseColor) {
+    final Paint shapePaint = Paint()
       ..style = PaintingStyle.fill;
-
-    // Círculo superior izquierdo
-    canvas.drawCircle(
-      Offset(size.width * 0.3, size.height * 0.2),
-      size.width * 0.4,
-      bgCirclePaint,
+    
+    // Random para posiciones aleatorias pero determinísticas
+    final Random random = Random(42);
+    
+    // Dibujar círculos grandes difuminados
+    for (int i = 0; i < 4; i++) {
+      final double x = random.nextDouble() * size.width;
+      final double y = random.nextDouble() * size.height;
+      final double radius = (50 + random.nextDouble() * 150);
+      
+      // Gradiente radial para los círculos
+      shapePaint.shader = RadialGradient(
+        colors: [
+          baseColor.withOpacity(0.06),
+          baseColor.withOpacity(0.01),
+        ],
+        stops: [0.0, 1.0],
+        radius: 1.0,
+      ).createShader(Rect.fromCircle(center: Offset(x, y), radius: radius));
+      
+      canvas.drawCircle(Offset(x, y), radius, shapePaint);
+    }
+    
+    // Dibujar algunos patrones hexagonales sutiles en ubicaciones estratégicas
+    _drawHexagonPattern(
+      canvas, 
+      Offset(size.width * 0.2, size.height * 0.3),
+      baseColor.withOpacity(0.08),
+      30,
+      3
     );
-
-    // Círculo inferior derecho
-    canvas.drawCircle(
-      Offset(size.width * 0.7, size.height * 0.8),
-      size.width * 0.3,
-      bgCirclePaint,
+    
+    _drawHexagonPattern(
+      canvas, 
+      Offset(size.width * 0.8, size.height * 0.7),
+      baseColor.withOpacity(0.08),
+      30,
+      3
     );
+  }
+  
+  // Método para dibujar un patrón de hexágonos
+  void _drawHexagonPattern(Canvas canvas, Offset center, Color color, double size, int rings) {
+    final Paint hexPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+      
+    for (int ring = 0; ring < rings; ring++) {
+      final double ringSize = size * (1 + ring * 0.5);
+      
+      Path hexPath = Path();
+      for (int i = 0; i < 6; i++) {
+        final double angle = (i * 60) * (pi / 180);
+        final double x = center.dx + ringSize * cos(angle);
+        final double y = center.dy + ringSize * sin(angle);
+        
+        if (i == 0) {
+          hexPath.moveTo(x, y);
+        } else {
+          hexPath.lineTo(x, y);
+        }
+      }
+      hexPath.close();
+      
+      canvas.drawPath(hexPath, hexPaint);
+    }
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+// Clase para dibujar un fondo con efecto neón
+class NeonBackgroundPainter extends CustomPainter {
+  final bool isDarkMode;
+  
+  NeonBackgroundPainter({required this.isDarkMode});
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    final width = size.width;
+    final height = size.height;
+    
+    // Dibujamos círculos y óvalos con efecto neón en el fondo
+    _drawNeonCircles(canvas, size);
+    
+    // Añadimos un efecto de grid sutil
+    _drawNeonGrid(canvas, size);
+  }
+  
+  void _drawNeonCircles(Canvas canvas, Size size) {
+    final width = size.width;
+    final height = size.height;
+    final random = Random(42); // Semilla fija para consistencia
+    
+    // Crear varios círculos de diferentes tamaños y posiciones
+    for (int i = 0; i < 8; i++) {
+      double x = random.nextDouble() * width;
+      double y = random.nextDouble() * height;
+      double radius = 50 + random.nextDouble() * 200;
+      
+      // Colores neón adaptados según modo claro/oscuro
+      Color neonColor;
+      if (i % 3 == 0) {
+        // Azul neón
+        neonColor = isDarkMode ? Color(0xFF4D6CFA) : Color(0xFF3A7BF2);
+      } else if (i % 3 == 1) {
+        // Morado neón
+        neonColor = isDarkMode ? Color(0xFF9D4EDD) : Color(0xFF8C61FF);
+      } else {
+        // Cyan neón
+        neonColor = isDarkMode ? Color(0xFF02C3C7) : Color(0xFF00B4C6);
+      }
+      
+      // Ajustar opacidad según el modo
+      double baseOpacity = isDarkMode ? 0.2 : 0.15;
+      
+      // Crear un gradiente radial para el efecto de brillo
+      final Paint circlePaint = Paint()
+        ..style = PaintingStyle.fill
+        ..shader = RadialGradient(
+          colors: [
+            neonColor.withOpacity(baseOpacity),
+            neonColor.withOpacity(baseOpacity * 0.1),
+            neonColor.withOpacity(0.0),
+          ],
+          stops: [0.0, 0.5, 1.0],
+          radius: 1.0,
+        ).createShader(Rect.fromCircle(center: Offset(x, y), radius: radius));
+      
+      canvas.drawCircle(
+        Offset(x, y),
+        radius,
+        circlePaint,
+      );
+      
+      // Añadir un pequeño brillo central más intenso
+      final Paint centerPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..shader = RadialGradient(
+          colors: [
+            neonColor.withOpacity(isDarkMode ? 0.4 : 0.2),
+            neonColor.withOpacity(0.0),
+          ],
+          stops: [0.0, 1.0],
+          radius: 0.5,
+        ).createShader(Rect.fromCircle(center: Offset(x, y), radius: radius * 0.3));
+      
+      canvas.drawCircle(
+        Offset(x, y),
+        radius * 0.3,
+        centerPaint,
+      );
+    }
+  }
+  
+  void _drawNeonGrid(Canvas canvas, Size size) {
+    final width = size.width;
+    final height = size.height;
+    
+    // Ajustar opacidad según el modo
+    double gridOpacity = isDarkMode ? 0.08 : 0.04;
+    
+    // Líneas horizontales
+    final Paint horizontalLinePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5
+      ..shader = LinearGradient(
+        colors: [
+          Colors.transparent,
+          Color(0xFF02C3C7).withOpacity(gridOpacity),
+          Colors.transparent,
+        ],
+        stops: [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromLTWH(0, 0, width, 1));
+    
+    for (double y = 50; y < height; y += 100) {
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(width, y),
+        horizontalLinePaint,
+      );
+    }
+    
+    // Líneas verticales
+    final Paint verticalLinePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.transparent,
+          Color(0xFF9D4EDD).withOpacity(gridOpacity),
+          Colors.transparent,
+        ],
+        stops: [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromLTWH(0, 0, 1, height));
+    
+    for (double x = 50; x < width; x += 100) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, height),
+        verticalLinePaint,
+      );
+    }
+  }
+  
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+

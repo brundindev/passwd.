@@ -67,6 +67,7 @@ dependencies:
   shared_preferences: ^2.5.2  # Para almacenar configuraciones de la app
   cross_file: ^0.3.4+2
   email_validator: ^3.0.0
+  flutter_animate: ^4.5.2
 
 dev_dependencies:
   flutter_test:
