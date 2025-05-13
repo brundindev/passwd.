@@ -16,7 +16,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'folder_selector_screen.dart';
 
-// Constantes de diseño modernizado
 class AppDesign {
   // Colores principales
   static const Color primaryBlue = Color(0xFF3A7BF2);
