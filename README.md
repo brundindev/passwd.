@@ -51,9 +51,6 @@ Crea contraseñas aleatorias fuertes con solo un clic.
 ✅ **Modo oscuro/claro** 🌙☀️  
 Personaliza la interfaz a tu gusto.  
 
-✅ **Acceso sin conexión** 📴  
-Consulta tus contraseñas sin necesidad de internet.  
-
 ✅ **Multiplataforma** 🖥️📱  
 Disponible en **Android, iOS, Windows, macOS y Linux**.  
 
