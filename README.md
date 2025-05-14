@@ -34,7 +34,7 @@
 ## ⭐ Características Principales
 
 ✅ **Cifrado de alto nivel** 🔑  
-Tus contraseñas son encriptadas con **Base-64**, garantizando máxima seguridad.  
+Tus contraseñas son encriptadas con **XChaCha-20**, garantizando máxima seguridad.  
 
 ✅ **Autenticación con Biometría** (Proximamente...)👆  
 Accede con **huella dactilar o reconocimiento facial** en dispositivos compatibles.  
