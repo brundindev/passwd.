@@ -233,7 +233,7 @@ class FavoritePasswordsScreen extends StatelessWidget {
                         IconButton(
                           icon: Icon(
                             showPassword ? Icons.visibility_off : Icons.visibility,
-                            color: Theme.of(context).primaryColor,
+                            color: Colors.grey.shade700,
                           ),
                           onPressed: () {
                             setState(() {
@@ -448,7 +448,7 @@ class FavoritePasswordsScreen extends StatelessWidget {
                         IconButton(
                           icon: Icon(
                             showPassword ? Icons.visibility_off : Icons.visibility,
-                            color: Theme.of(context).primaryColor,
+                            color: Colors.grey.shade700,
                           ),
                           onPressed: () {
                             setDialogState(() {

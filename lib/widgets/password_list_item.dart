@@ -171,7 +171,7 @@ class _PasswordListItemState extends State<PasswordListItem> {
                       icon: Icon(
                         _showPassword ? Icons.visibility_off : Icons.visibility,
                         size: 20,
-                        color: Colors.blue,
+                        color: Colors.grey.shade400,
                       ),
                       onPressed: () {
                         setState(() {

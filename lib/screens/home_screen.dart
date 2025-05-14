@@ -15,6 +15,7 @@ import '../services/folder_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'folder_selector_screen.dart';
+import '../services/notification_service.dart';
 
 class AppDesign {
   // Colores principales
@@ -86,6 +87,15 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selectedFolderId;
   final FolderService _folderService = FolderService();
   bool _isDarkMode = true; // Por defecto iniciamos en modo oscuro, como está actualmente
+  List<Password> _passwordsNeedingUpdate = [];
+  bool _hasCheckedPasswords = false;
+  bool _hasShownNotification = false;
+  
+  // Variables para el estado de verificación de contraseñas
+  bool _isVerifyingPasswords = false;
+  bool _verificationSuccess = false;
+  bool _verificationError = false;
+  String _verificationMessage = '';
 
   // Utilizar el servicio PasswordGenerator en lugar de la implementación local
   String generateRandomPassword({int length = 12}) {
@@ -122,7 +132,103 @@ class _HomeScreenState extends State<HomeScreen> {
         Future.microtask(() {
           Navigator.of(context).pushReplacementNamed('/welcome');
         });
+      } else {
+        // Si el usuario está autenticado, verificar contraseñas a actualizar
+        _checkPasswordsNeedingUpdate();
       }
+    }
+  }
+  
+  // Verificar contraseñas que necesitan actualización
+  Future<void> _checkPasswordsNeedingUpdate() async {
+    // Si ya se marcó como verificado y no estamos forzando una nueva verificación, salir
+    if (_hasCheckedPasswords && !_isVerifyingPasswords) return;
+    
+    // Si ya está verificando, no iniciar otra verificación
+    if (_isVerifyingPasswords && !_hasCheckedPasswords) return;
+    
+    // Actualizar el estado a "verificando"
+    setState(() {
+      _isVerifyingPasswords = true;
+      _verificationSuccess = false;
+      _verificationError = false;
+      _verificationMessage = 'Verificando contraseñas...';
+    });
+    
+    try {
+      // Simular un pequeño retraso para dar retroalimentación visual
+      await Future.delayed(Duration(milliseconds: 1500));
+      
+      // Obtener contraseñas que necesitan actualización
+      final passwordsToUpdate = await NotificationService.getPasswordsNeedingUpdate();
+      
+      if (mounted) {
+        setState(() {
+          _passwordsNeedingUpdate = passwordsToUpdate;
+          _hasCheckedPasswords = true;
+          _isVerifyingPasswords = false;
+          _verificationSuccess = true;
+          _verificationError = false;
+          
+          if (passwordsToUpdate.isEmpty) {
+            _verificationMessage = 'Todas tus contraseñas están actualizadas';
+          } else {
+            _verificationMessage = passwordsToUpdate.length == 1
+                ? 'Se encontró 1 contraseña por actualizar'
+                : 'Se encontraron ${passwordsToUpdate.length} contraseñas por actualizar';
+          }
+        });
+        
+        // Esperar a que se construya completamente la pantalla antes de mostrar notificación
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (passwordsToUpdate.isNotEmpty && !_hasShownNotification) {
+            _hasShownNotification = true;
+            NotificationService.showPasswordUpdateReminder(context, passwordsToUpdate);
+          }
+        });
+      }
+    } catch (e) {
+      print("Error al verificar contraseñas para actualizar: $e");
+      if (mounted) {
+        setState(() {
+          _isVerifyingPasswords = false;
+          _verificationSuccess = false;
+          _verificationError = true;
+          _verificationMessage = 'Error al verificar contraseñas';
+        });
+      }
+    }
+    
+    // Restablecer los estados después de un tiempo
+    Future.delayed(Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _verificationSuccess = false;
+          _verificationError = false;
+        });
+      }
+    });
+  }
+
+  // Método para verificar periódicamente las contraseñas
+  void _startPasswordCheckTimer() {
+    // Verificar contraseñas cada 24 horas
+    Future.delayed(Duration(hours: 24), () {
+      if (mounted) {
+        _checkPasswordsNeedingUpdate();
+        _startPasswordCheckTimer(); // Reiniciar el temporizador
+      }
+    });
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Si estamos autenticados, verificar contraseñas a actualizar
+    if (FirebaseAuth.instance.currentUser != null && !_hasCheckedPasswords) {
+      _checkPasswordsNeedingUpdate();
+      _startPasswordCheckTimer();
     }
   }
 
@@ -264,6 +370,405 @@ class _HomeScreenState extends State<HomeScreen> {
                         onPressed: () {
                           _refreshPasswords();
                         },
+                      ),
+                    ),
+                  ),
+                  
+                  // Botón de notificaciones
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: PopupMenuButton<String>(
+                      offset: Offset(0, 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      color: isDarkMode ? Color(0xFF1C1C1E) : Colors.white,
+                      elevation: 8,
+                      tooltip: 'Notificaciones',
+                      enabled: true,
+                      position: PopupMenuPosition.under,
+                      onCanceled: () {
+                        // Resetear el estado cuando se cierra el menú
+                        if (mounted && (_verificationSuccess || _verificationError)) {
+                          setState(() {
+                            _verificationSuccess = false;
+                            _verificationError = false;
+                          });
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        // Encabezado con conteo de notificaciones
+                        PopupMenuItem<String>(
+                          enabled: false,
+                          height: 40,
+                          child: Row(
+                            children: [
+                              Icon(
+                                _isVerifyingPasswords
+                                    ? Icons.shield
+                                    : _passwordsNeedingUpdate.isEmpty 
+                                        ? CupertinoIcons.bell_slash 
+                                        : CupertinoIcons.bell_fill,
+                                color: _isVerifyingPasswords
+                                    ? Colors.amber
+                                    : _passwordsNeedingUpdate.isEmpty 
+                                        ? Colors.green 
+                                        : Colors.red,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                _isVerifyingPasswords
+                                    ? 'Verificando...'
+                                    : _passwordsNeedingUpdate.isEmpty
+                                        ? 'Notificaciones'
+                                        : 'Notificaciones (${_passwordsNeedingUpdate.length})',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: _isVerifyingPasswords
+                                      ? Colors.amber
+                                      : _passwordsNeedingUpdate.isEmpty
+                                          ? Colors.green
+                                          : Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Separador
+                        PopupMenuItem<String>(
+                          enabled: false,
+                          height: 1,
+                          padding: EdgeInsets.zero,
+                          child: Divider(height: 1),
+                        ),
+                        
+                        // Mensaje de estado (verificando, éxito o error)
+                        PopupMenuItem<String>(
+                          enabled: false,
+                          height: 80,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(height: 8),
+                              Icon(
+                                _isVerifyingPasswords
+                                    ? Icons.shield
+                                    : _verificationError
+                                        ? Icons.error_outline
+                                        : _passwordsNeedingUpdate.isEmpty
+                                            ? CupertinoIcons.checkmark_shield_fill
+                                            : Icons.warning_amber_rounded,
+                                color: _isVerifyingPasswords
+                                    ? Colors.amber
+                                    : _verificationError
+                                        ? Colors.red
+                                        : _passwordsNeedingUpdate.isEmpty
+                                            ? Colors.green
+                                            : Colors.amber,
+                                size: 28,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                _isVerifyingPasswords
+                                    ? 'Verificando contraseñas...'
+                                    : _verificationError
+                                        ? 'Error al verificar contraseñas'
+                                        : _passwordsNeedingUpdate.isEmpty 
+                                            ? 'Todas tus contraseñas están actualizadas'
+                                            : '${_passwordsNeedingUpdate.length} ${_passwordsNeedingUpdate.length == 1 ? 'contraseña necesita' : 'contraseñas necesitan'} actualización',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: _isVerifyingPasswords
+                                      ? Colors.amber
+                                      : _verificationError
+                                          ? Colors.red
+                                          : _passwordsNeedingUpdate.isEmpty
+                                              ? Colors.green
+                                              : Colors.amber,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Mostrar contraseñas que necesitan actualización solo si no está verificando
+                        if (_passwordsNeedingUpdate.isNotEmpty && !_isVerifyingPasswords) 
+                          ..._passwordsNeedingUpdate.take(3).map((password) {
+                            int days = NotificationService.daysUntilExpiration(password);
+                            bool isExpired = days == 0;
+                            
+                            return PopupMenuItem<String>(
+                              value: 'password_${password.id}',
+                              height: 60,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: isDarkMode 
+                                      ? Colors.grey.shade900.withOpacity(0.5) 
+                                      : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isExpired ? Colors.red.withOpacity(0.3) : Colors.amber.withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: isExpired 
+                                            ? Colors.red.withOpacity(0.1) 
+                                            : Colors.amber.withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        isExpired 
+                                            ? CupertinoIcons.exclamationmark_circle 
+                                            : CupertinoIcons.clock,
+                                        color: isExpired ? Colors.red : Colors.amber,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            password.sitio,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                              color: isDarkMode ? Colors.white : Colors.black87,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            isExpired 
+                                                ? '¡Actualización necesaria!' 
+                                                : 'Actualizar en $days ${days == 1 ? 'día' : 'días'}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isExpired ? Colors.red : Colors.amber,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              onTap: () {
+                                _getPasswordById(password.id).then((updatedPassword) {
+                                  if (updatedPassword != null) {
+                                    _editPassword(updatedPassword);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        
+                        // Opción Ver todas si hay más de 3
+                        if (_passwordsNeedingUpdate.length > 3)
+                          PopupMenuItem<String>(
+                            value: 'view_all',
+                            height: 40,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.visibility,
+                                  color: Colors.blue,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Ver todas (${_passwordsNeedingUpdate.length})',
+                                  style: TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            onTap: () {
+                              Future.delayed(Duration(milliseconds: 100), () {
+                                NotificationService.showPasswordUpdateDialog(context, _passwordsNeedingUpdate);
+                              });
+                            },
+                          ),
+                        
+                        // Separador final
+                        PopupMenuItem<String>(
+                          enabled: false,
+                          height: 1,
+                          padding: EdgeInsets.zero,
+                          child: Divider(height: 1),
+                        ),
+                        
+                        // Botón para verificar contraseñas
+                        PopupMenuItem<String>(
+                          value: null, // Sin valor para evitar cierre
+                          enabled: true, // Siempre habilitado
+                          height: 45,
+                          child: InkWell(
+                            onTap: _isVerifyingPasswords ? null : () {
+                              // Iniciar verificación sin cerrar el menú
+                              setState(() {
+                                _isVerifyingPasswords = true;
+                                _hasCheckedPasswords = false; // Forzar nueva verificación
+                              });
+                              _checkPasswordsNeedingUpdate();
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _isVerifyingPasswords 
+                                        ? Icons.shield
+                                        : _verificationSuccess 
+                                            ? Icons.check_circle_outline
+                                            : _verificationError
+                                                ? Icons.error_outline
+                                                : Icons.refresh,
+                                    color: _isVerifyingPasswords 
+                                        ? Colors.amber
+                                        : _verificationSuccess 
+                                            ? Colors.green
+                                            : _verificationError
+                                                ? Colors.red
+                                                : Colors.blue,
+                                    size: 18,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    _isVerifyingPasswords 
+                                        ? 'Verificando...'
+                                        : _verificationSuccess || _verificationError
+                                            ? _verificationMessage
+                                            : 'Verificar contraseñas',
+                                    style: TextStyle(
+                                      color: _isVerifyingPasswords 
+                                          ? Colors.amber
+                                          : _verificationSuccess 
+                                              ? Colors.green
+                                              : _verificationError
+                                                  ? Colors.red
+                                                  : Colors.blue,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        
+                        // Espaciador cuando está verificando o muestra resultado
+                        if (_isVerifyingPasswords || _verificationSuccess || _verificationError)
+                          PopupMenuItem<String>(
+                            enabled: false,
+                            height: 20,
+                            padding: EdgeInsets.zero,
+                            child: SizedBox(),
+                          ),
+                      ],
+                      child: Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: _passwordsNeedingUpdate.isNotEmpty
+                                ? [
+                                    Colors.amber.withOpacity(isDarkMode ? 0.3 : 0.2), 
+                                    Colors.orange.withOpacity(isDarkMode ? 0.2 : 0.1)
+                                  ]
+                                : [
+                                    AppDesign.primaryBlue.withOpacity(isDarkMode ? 0.2 : 0.1),
+                                    AppDesign.accentPurple.withOpacity(isDarkMode ? 0.15 : 0.05),
+                                  ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            if (_passwordsNeedingUpdate.isNotEmpty)
+                              BoxShadow(
+                                color: Colors.amber.withOpacity(0.2),
+                                blurRadius: 10,
+                                offset: Offset(0, 2),
+                                spreadRadius: -2,
+                              )
+                            else
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: Offset(0, 2),
+                                spreadRadius: -5,
+                              ),
+                          ],
+                          border: _passwordsNeedingUpdate.isNotEmpty
+                              ? Border.all(
+                                  color: Colors.amber.withOpacity(0.4),
+                                  width: 1,
+                                )
+                              : null,
+                        ),
+                        child: Stack(
+                          children: [
+                            Center(
+                              child: Icon(
+                                _passwordsNeedingUpdate.isNotEmpty
+                                    ? CupertinoIcons.bell_fill
+                                    : CupertinoIcons.bell,
+                                color: _passwordsNeedingUpdate.isNotEmpty
+                                    ? Colors.amber
+                                    : (isDarkMode ? Colors.white : Colors.black87),
+                                size: 20,
+                              ),
+                            ),
+                            if (_passwordsNeedingUpdate.isNotEmpty)
+                              Positioned(
+                                right: 8,
+                                top: 8,
+                                child: Container(
+                                  width: _passwordsNeedingUpdate.length > 9 ? 16 : 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isDarkMode ? Colors.black : Colors.white,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      _passwordsNeedingUpdate.length.toString(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: _passwordsNeedingUpdate.length > 9 ? 6 : 8,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -2116,6 +2621,11 @@ class _HomeScreenState extends State<HomeScreen> {
       // Refrescar contraseñas
       _refreshPasswords();
       
+      // Eliminar esta contraseña de la lista de contraseñas que necesitan actualización
+      setState(() {
+        _passwordsNeedingUpdate.removeWhere((p) => p.id == passwordId);
+      });
+      
       // Mostrar mensaje de éxito
       _showNotification('Contraseña actualizada correctamente');
     } catch (e) {
@@ -3470,7 +3980,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                             child: Icon(
                               showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                              color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
                               size: 22,
                             ),
                           ),
@@ -3599,9 +4109,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (siteController.text.isEmpty || 
                         usernameController.text.isEmpty || 
                         passwordController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Por favor, completa los campos obligatorios')),
-                      );
+                      _showStyledSnackBar('Por favor, completa los campos obligatorios', isError: true);
                       return;
                     }
                     
@@ -3616,7 +4124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       isFavorite: false,
                       isInTrash: false,
                       folderIds: selectedFolderIds,
-                                    notes: notesController.text,
+                      notes: notesController.text,
                     );
                     
                     // Guardar contraseña
@@ -3624,9 +4132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     
                     Navigator.pop(context);
                     
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Contraseña añadida correctamente')),
-                    );
+                    _showStyledSnackBar('Contraseña añadida correctamente');
                   },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.blue,
@@ -3908,16 +4414,21 @@ class _HomeScreenState extends State<HomeScreen> {
       // Cerrar diálogo de carga
       Navigator.of(context).pop();
       
+      // No verificar contraseñas que necesitan actualización automáticamente
+      // Ya que esto entra en conflicto con el botón de notificaciones
+      // Solo actualizar la lista si ya la habíamos obtenido antes
+      if (_hasCheckedPasswords) {
+        // Obtener las contraseñas actualizadas sin mostrar verificación
+        final passwordsToUpdate = await NotificationService.getPasswordsNeedingUpdate();
+        if (mounted) {
+          setState(() {
+            _passwordsNeedingUpdate = passwordsToUpdate;
+          });
+        }
+      }
+      
       // Mostrar mensaje de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Contraseñas actualizadas correctamente'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+      _showStyledSnackBar('Contraseñas actualizadas correctamente');
       
       // Forzar reconstrucción de la UI
       setState(() {});
@@ -3926,16 +4437,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.of(context, rootNavigator: true).pop();
       
       // Mostrar mensaje de error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al actualizar las contraseñas: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+      _showStyledSnackBar('Error al actualizar las contraseñas: $e', isError: true);
     }
   }
 
@@ -5454,7 +5956,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             child: Icon(
                               showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                              color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
                               size: 22,
                             ),
                           ),
@@ -5893,6 +6395,392 @@ class _HomeScreenState extends State<HomeScreen> {
                 size: 22,
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Método para mostrar el menú desplegable de notificaciones
+  void _showNotificationsMenu(BuildContext context) {
+    final isDarkMode = _isDarkMode;
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: isDarkMode ? Color(0xFF1C1C1E) : Colors.white,
+        elevation: 8,
+        insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Container(
+          width: double.infinity,
+          constraints: BoxConstraints(
+            maxWidth: 400,
+            maxHeight: MediaQuery.of(context).size.height * 0.7,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Título del diálogo
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        CupertinoIcons.bell_fill,
+                        color: Colors.amber,
+                        size: 20,
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        'Notificaciones',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                        size: 20,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              
+              Divider(),
+              
+              // Si no hay notificaciones, mostrar un mensaje
+              if (_passwordsNeedingUpdate.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    children: [
+                      Icon(
+                        CupertinoIcons.bell_slash,
+                        color: Colors.grey,
+                        size: 60,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Sin notificaciones',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Todas tus contraseñas están actualizadas',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 20),
+                      OutlinedButton.icon(
+                        icon: Icon(Icons.refresh, size: 16),
+                        label: Text('Verificar contraseñas'),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _checkPasswordsNeedingUpdate();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                          side: BorderSide(color: Colors.blue),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              // Si hay notificaciones, mostrar la lista
+              else
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Contraseñas a actualizar',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                                  ),
+                                ),
+                                Spacer(),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '${_passwordsNeedingUpdate.length}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: Colors.amber,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          // Lista de contraseñas
+                          ..._passwordsNeedingUpdate.map((password) {
+                            int days = NotificationService.daysUntilExpiration(password);
+                            bool isExpired = days == 0;
+                            
+                            return InkWell(
+                              onTap: () {
+                                Navigator.pop(context);
+                                _getPasswordById(password.id).then((updatedPassword) {
+                                  if (updatedPassword != null) {
+                                    _editPassword(updatedPassword);
+                                  }
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                margin: EdgeInsets.symmetric(vertical: 4),
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isDarkMode 
+                                      ? Colors.grey.shade900.withOpacity(0.3) 
+                                      : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isDarkMode 
+                                        ? Colors.grey.shade800
+                                        : Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Icono de la contraseña
+                                    Container(
+                                      padding: EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: isExpired
+                                            ? Colors.red.withOpacity(0.1)
+                                            : Colors.amber.withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        isExpired
+                                            ? CupertinoIcons.exclamationmark_circle
+                                            : CupertinoIcons.clock,
+                                        color: isExpired ? Colors.red : Colors.amber,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    
+                                    // Información de la contraseña
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            password.sitio,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 16,
+                                              color: isDarkMode ? Colors.white : Colors.black87,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Usuario: ${password.usuario}',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                CupertinoIcons.calendar,
+                                                size: 12,
+                                                color: isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
+                                              ),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'Última actualización: ${_formatDate(password.ultimaModificacion)}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            isExpired
+                                                ? '¡Contraseña vencida!'
+                                                : 'Actualizar en $days ${days == 1 ? 'día' : 'días'}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: isExpired ? Colors.red : Colors.amber,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    
+                                    // Botón de edición
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        _getPasswordById(password.id).then((updatedPassword) {
+                                          if (updatedPassword != null) {
+                                            _editPassword(updatedPassword);
+                                          }
+                                        });
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        elevation: 0,
+                                      ),
+                                      child: Text('Actualizar'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          
+                          SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                
+              // Pie del diálogo
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _checkPasswordsNeedingUpdate();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDarkMode 
+                        ? Colors.grey.shade800
+                        : Colors.grey.shade200,
+                    foregroundColor: isDarkMode ? Colors.white : Colors.black87,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.refresh, size: 16),
+                      SizedBox(width: 8),
+                      Text('Verificar contraseñas'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  // Formatea una fecha para mostrarla al usuario
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  // Método para mostrar SnackBars con estilo consistente
+  void _showStyledSnackBar(String message, {bool isError = false, SnackBarAction? action, Duration? duration}) {
+    final isDarkMode = _isDarkMode;
+    
+    // Cancelar SnackBars previos
+    ScaffoldMessenger.of(context).clearSnackBars();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            if (isError || action == null)
+              Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isError
+                      ? Colors.red.withOpacity(0.2)
+                      : Colors.green.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isError ? Icons.error_outline : Icons.check_circle_outline,
+                  color: isError ? Colors.red : Colors.green,
+                  size: 18,
+                ),
+              ),
+            if (isError || action == null) SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.black.withOpacity(0.8),
+        behavior: SnackBarBehavior.floating,
+        duration: duration ?? Duration(seconds: 3),
+        action: action,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     );

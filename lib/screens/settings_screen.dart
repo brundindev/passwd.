@@ -6,6 +6,8 @@ import '../services/password_service.dart';
 import '../services/export_import_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/inactivity_detector.dart';
+import '../services/notification_service.dart';
+import '../models/password.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,6 +19,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> with InactivityDetectorMixin {
   bool _isExporting = false;
   bool _isImporting = false;
+  bool _isChecking = false;
 
   @override
   Widget build(BuildContext context) {
@@ -236,6 +239,36 @@ class _SettingsScreenState extends State<SettingsScreen> with InactivityDetector
                   : Icon(Icons.chevron_right, color: Colors.grey.withOpacity(0.5)),
                 onTap: _isImporting ? null : () {
                   _importPasswordsFromCSV();
+                  resetUserActivity();
+                },
+                divider: false,
+              ),
+            ],
+          ),
+          
+          SizedBox(height: 20),
+          
+          // Sección de recordatorios
+          _buildSectionHeader('RECORDATORIOS'),
+          _buildSettingsCard(
+            children: [
+              _buildSettingsTile(
+                title: 'Verificar contraseñas',
+                subtitle: 'Comprobar contraseñas que necesitan actualización',
+                leading: _buildIconContainer(
+                  icon: Icons.update_rounded,
+                  color: Colors.amber,
+                ),
+                trailing: _isChecking
+                  ? Container(
+                      width: 24,
+                      height: 24,
+                      padding: EdgeInsets.all(4),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.chevron_right, color: Colors.grey.withOpacity(0.5)),
+                onTap: _isChecking ? null : () {
+                  _checkPasswordsToUpdate();
                   resetUserActivity();
                 },
                 divider: false,
@@ -521,5 +554,48 @@ class _SettingsScreenState extends State<SettingsScreen> with InactivityDetector
         ],
       ),
     );
+  }
+  
+  // Comprobar contraseñas que necesitan actualización
+  Future<void> _checkPasswordsToUpdate() async {
+    setState(() {
+      _isChecking = true;
+    });
+
+    try {
+      final List<Password> passwordsToUpdate = await NotificationService.getPasswordsNeedingUpdate();
+      
+      setState(() {
+        _isChecking = false;
+      });
+      
+      if (passwordsToUpdate.isEmpty) {
+        _showMessage('Todas tus contraseñas están actualizadas.');
+      } else {
+        _showPasswordUpdateDialog(passwordsToUpdate);
+      }
+    } catch (e) {
+      setState(() {
+        _isChecking = false;
+      });
+      _showMessage('Error al verificar contraseñas: $e', isError: true);
+    }
+  }
+  
+  void _showMessage(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : null,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+  
+  void _showPasswordUpdateDialog(List<Password> passwordsToUpdate) {
+    NotificationService.showPasswordUpdateDialog(context, passwordsToUpdate);
   }
 }

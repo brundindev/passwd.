@@ -540,7 +540,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         suffixIcon: IconButton(
           icon: Icon(
             obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-            color: Colors.grey,
+            color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
             size: 22,
           ),
           onPressed: toggleObscure,
