@@ -82,7 +82,13 @@ class FavoritePasswordsScreen extends StatelessWidget {
   void _toggleFavorite(BuildContext context, Password password) async {
     final passwordService = Provider.of<PasswordService>(context, listen: false);
     try {
-      await passwordService.toggleFavorite(password.id, !password.isFavorite);
+      // Crear un nuevo objeto Password con el valor de favorito actualizado
+      final bool newFavoriteStatus = !password.isFavorite;
+      
+      // Actualizar en Firebase
+      await passwordService.toggleFavorite(password.id, newFavoriteStatus);
+      
+      // Mostrar mensaje
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(password.isFavorite 
@@ -96,6 +102,19 @@ class FavoritePasswordsScreen extends StatelessWidget {
           ),
         ),
       );
+      
+      // Forzar una actualización de la UI después de un breve delay
+      // para permitir que Firebase procese el cambio
+      Future.delayed(Duration(milliseconds: 300), () {
+        // Actualizar la UI - en lugar de setState, refrescamos la página
+        if (context.mounted) {
+          Navigator.of(context).pop(); // Cerrar el diálogo actual si está abierto
+          // Navegar a la misma pantalla para forzar un refresh
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => FavoritePasswordsScreen())
+          );
+        }
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -273,20 +292,41 @@ class FavoritePasswordsScreen extends StatelessWidget {
                 ],
               ),
               SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(
-                    password.isFavorite ? Icons.star : Icons.star_border,
-                    color: password.isFavorite ? Colors.amber : Colors.grey.shade400,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    password.isFavorite ? 'Marcada como favorita' : 'No es favorita',
-                    style: TextStyle(
-                      color: password.isFavorite ? Colors.amber.shade700 : Colors.grey.shade600,
+              // Botón para cambiar estado de favorito
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).pop(); // Cerrar el diálogo actual
+                  _toggleFavorite(context, password); // Cambiar estado
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: password.isFavorite ? Colors.amber.withOpacity(0.1) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: password.isFavorite ? Colors.amber : Colors.grey.shade300,
+                      width: 1,
                     ),
                   ),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        password.isFavorite ? Icons.star : Icons.star_border,
+                        color: password.isFavorite ? Colors.amber : Colors.grey.shade400,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        password.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos',
+                        style: TextStyle(
+                          color: password.isFavorite ? Colors.amber.shade700 : Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),

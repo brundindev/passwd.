@@ -3171,21 +3171,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: password.isFavorite ? 'Quitar favorito' : 'Añadir favorito',
                     color: Colors.amber,
                     onTap: () {
-                      _toggleFavoritePassword(password);
-                    setState(() {
-                        // No podemos modificar directamente password.isFavorite porque es final
-                        // Solo actualizamos la UI, la base de datos ya se actualizó en _toggleFavoritePassword
-                      });
-                      // Cerramos el diálogo para mostrar los cambios al reabrir
+                      // Cerrar este diálogo primero
                       Navigator.of(context).pop();
-                      // Volvemos a mostrar los detalles con la contraseña actualizada
-                      _getPasswordById(password.id).then((updatedPassword) {
-                        if (updatedPassword != null) {
-                          _showPasswordDetails(updatedPassword);
-                        }
-                    });
-                  },
-                ),
+                      
+                      // Cambiar el estado en Firebase y actualizar la UI
+                      _toggleFavoritePassword(password);
+                      
+                      // Obtener la contraseña actualizada y volver a mostrar detalles
+                      Future.delayed(Duration(milliseconds: 300), () {
+                        _getPasswordById(password.id).then((updatedPassword) {
+                          if (updatedPassword != null && mounted) {
+                            _showPasswordDetails(updatedPassword);
+                          }
+                        });
+                      });
+                    },
+                  ),
                   SizedBox(width: 16),
                   // Botón de carpeta
                   _buildQuickActionButton(
@@ -3194,10 +3195,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.blue,
                     onTap: () {
                       Navigator.of(context).pop();
+                      // Mostrar diálogo simple de gestión de carpetas
                       _showManageFolders(password);
-                  },
-                ),
-              ],
+                    },
+                  ),
+                ],
               ),
               
               SizedBox(height: 24),
@@ -4381,38 +4383,45 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final passwordService = Provider.of<PasswordService>(context, listen: false);
       
-      // Mostrar indicador de carga
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text(
-                    "Sincronizando contraseñas...",
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ],
+      // Verificamos si estamos actualizando por una acción de favorito (no mostrar diálogo)
+      bool isQuickRefresh = StackTrace.current.toString().contains('_toggleFavoritePassword');
+      
+      // Solo mostrar indicador de carga si no es una actualización rápida de favorito
+      if (!isQuickRefresh) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-            ),
-          );
-        },
-      );
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      "Sincronizando contraseñas...",
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      }
       
       // Forzar una recarga desde la base de datos
       await passwordService.refreshPasswords();
       
-      // Cerrar diálogo de carga
-      Navigator.of(context).pop();
+      // Cerrar diálogo de carga si lo mostramos
+      if (!isQuickRefresh && Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
       
       // No verificar contraseñas que necesitan actualización automáticamente
       // Ya que esto entra en conflicto con el botón de notificaciones
@@ -4427,14 +4436,23 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
       
-      // Mostrar mensaje de éxito
-      _showStyledSnackBar('Contraseñas actualizadas correctamente');
+      // Mostrar mensaje de éxito solo si no es una actualización rápida de favorito
+      if (!isQuickRefresh) {
+        _showStyledSnackBar('Contraseñas actualizadas correctamente');
+      }
       
       // Forzar reconstrucción de la UI
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } catch (e) {
-      // Cerrar diálogo de carga si está abierto
-      Navigator.of(context, rootNavigator: true).pop();
+      // Verificar si se estaba mostrando un diálogo de carga
+      bool isQuickRefresh = StackTrace.current.toString().contains('_toggleFavoritePassword');
+      
+      // Cerrar diálogo de carga si está abierto y no es actualización rápida
+      if (!isQuickRefresh && Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
       
       // Mostrar mensaje de error
       _showStyledSnackBar('Error al actualizar las contraseñas: $e', isError: true);
@@ -5393,14 +5411,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   
-  // Método para gestionar en qué carpetas está la contraseña
+  // Método mejorado para gestionar carpetas (interfaz moderna con lógica simplificada)
   void _showManageFolders(Password password) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    // Crear lista de carpetas seleccionadas al inicio
+    List<String> selectedFolderIds = List<String>.from(password.folderIds);
     
+    // Mantener el modal sheet para la estética moderna
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -5422,6 +5444,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Indicador de arrastre (estético)
                       Center(
                         child: Container(
                           width: 40,
@@ -5433,6 +5456,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       SizedBox(height: 24),
+                      
+                      // Título y subtítulo
                       Text(
                         'Gestionar carpetas',
                         style: TextStyle(
@@ -5452,8 +5477,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       SizedBox(height: 24),
                       
                       // Lista de carpetas con checkboxes
-                      StreamBuilder(
-                        stream: _folderService.getFolders(),
+                      FutureBuilder(
+                        future: _folderService.getFolders().first,
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             return Center(
@@ -5480,32 +5505,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                         color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                                       ),
                                     ),
-                                    SizedBox(height: 16),
-                                    ElevatedButton.icon(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                        Navigator.pushNamed(context, '/folders');
-                                      },
-                                      icon: Icon(Icons.add_rounded),
-                                      label: Text('Crear carpeta'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue,
-                                        foregroundColor: Colors.white,
-                                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
                           
                           List<dynamic> folders = snapshot.data as List;
-                          // Crear una copia local de los folderIds
-                          List<String> currentFolderIds = List<String>.from(password.folderIds);
                           
                           return Column(
                             children: [
@@ -5515,13 +5521,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.grey.shade100,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
+                                constraints: BoxConstraints(
+                                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                                ),
                                 child: ListView.builder(
                                   shrinkWrap: true,
-                                  physics: NeverScrollableScrollPhysics(),
                                   itemCount: folders.length,
                                   itemBuilder: (context, index) {
                                     var folder = folders[index];
-                                    bool isSelected = currentFolderIds.contains(folder.id);
+                                    bool isSelected = selectedFolderIds.contains(folder.id);
                                     
                                     // Convertir color hexadecimal a Color
                                     Color folderColor;
@@ -5540,17 +5548,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                         onTap: () {
                                           setState(() {
                                             if (isSelected) {
-                                              currentFolderIds.remove(folder.id);
+                                              selectedFolderIds.remove(folder.id);
                                             } else {
-                                              currentFolderIds.add(folder.id);
+                                              selectedFolderIds.add(folder.id);
                                             }
                                           });
                                         },
                                         borderRadius: BorderRadius.circular(12),
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
+                                          child: Row(
+                                            children: [
                                               Container(
                                                 padding: EdgeInsets.all(8),
                                                 decoration: BoxDecoration(
@@ -5579,9 +5587,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 onChanged: (bool? value) {
                                                   setState(() {
                                                     if (value == true) {
-                                                      currentFolderIds.add(folder.id);
+                                                      selectedFolderIds.add(folder.id);
                                                     } else {
-                                                      currentFolderIds.remove(folder.id);
+                                                      selectedFolderIds.remove(folder.id);
                                                     }
                                                   });
                                                 },
@@ -5626,9 +5634,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   SizedBox(width: 12),
                                   ElevatedButton(
                                     onPressed: () {
-                                      // Guardar cambios
-                                      _updatePasswordFolders(password, currentFolderIds);
+                                      // Primero cerramos el diálogo para evitar problemas
                                       Navigator.pop(context);
+                                      // Actualizar carpetas con método sencillo
+                                      _simpleSaveFolders(password.id, selectedFolderIds);
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.blue,
@@ -5663,33 +5672,35 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   
-  // Método para actualizar las carpetas de una contraseña
-  void _updatePasswordFolders(Password password, List<String> newFolderIds) {
+  // Método simplificado para guardar las carpetas
+  void _simpleSaveFolders(String passwordId, List<String> folderIds) {
     final User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
     
     try {
-      // Actualizar en Firebase
+      // Actualizar en Firebase directamente
       FirebaseFirestore.instance
           .collection('usuarios')
           .doc(currentUser.uid)
           .collection('pass')
-          .doc(password.id)
+          .doc(passwordId)
           .update({
-        'folderIds': newFolderIds,
+        'folderIds': folderIds,
         'ultimaModificacion': DateTime.now(),
       });
       
       // Mostrar mensaje de éxito
       _showNotification('Carpetas actualizadas correctamente');
       
-      // Refrescar passwords
-      _refreshPasswords();
+      // Refrescar la lista sin diálogos adicionales
+      setState(() {});
     } catch (e) {
       print('Error al actualizar carpetas: $e');
       _showNotification('Error al actualizar carpetas', isError: true);
     }
   }
+  
+
   
   // Método para marcar/desmarcar como favorita
   void _toggleFavoritePassword(Password password) {
@@ -5697,6 +5708,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (currentUser == null) return;
     
     try {
+      // Crear un nuevo objeto Password con el valor de favorito actualizado
+      final bool newFavoriteStatus = !password.isFavorite;
+      
       // Actualizar en Firebase
       FirebaseFirestore.instance
           .collection('usuarios')
@@ -5704,7 +5718,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .collection('pass')
           .doc(password.id)
           .update({
-        'isFavorite': !password.isFavorite,
+        'isFavorite': newFavoriteStatus,
         'ultimaModificacion': DateTime.now(),
       });
       
@@ -5713,7 +5727,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ? 'Eliminado de favoritos'
           : 'Añadido a favoritos');
       
-      // Refrescar passwords
+      // Refrescar passwords inmediatamente
       _refreshPasswords();
     } catch (e) {
       print('Error al actualizar favorito: $e');
@@ -6184,18 +6198,35 @@ class _HomeScreenState extends State<HomeScreen> {
     if (currentUser == null) return null;
     
     try {
+      // Forzar refresco y obtener datos actualizados (ignorar caché)
       final doc = await FirebaseFirestore.instance
           .collection('usuarios')
           .doc(currentUser.uid)
           .collection('pass')
           .doc(passwordId)
-          .get();
+          .get(const GetOptions(source: Source.server)); // Forzar obtener desde servidor
           
       if (doc.exists && doc.data() != null) {
         return Password.fromMap(doc.id, doc.data()!);
       }
     } catch (e) {
       print('Error al obtener contraseña por ID: $e');
+      
+      // Si falla al obtener desde el servidor, intentamos desde caché como fallback
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('usuarios')
+            .doc(currentUser.uid)
+            .collection('pass')
+            .doc(passwordId)
+            .get();
+            
+        if (doc.exists && doc.data() != null) {
+          return Password.fromMap(doc.id, doc.data()!);
+        }
+      } catch (fallbackError) {
+        print('Error fallback al obtener contraseña por ID: $fallbackError');
+      }
     }
     return null;
   }
